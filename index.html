@@ -281,7 +281,7 @@ input[type="checkbox"]:active::after {
 </h2>
 
 <!-- 主餐 -->
-<div class="card" onclick="this.querySelector('select').focus()">
+<div class="card">
 <div style="display:flex;justify-content:space-between;align-items:center;">
 <div>
   <div>6吋潛艇堡</div>
@@ -530,30 +530,37 @@ function createAddonSelect(removable = true){
   const wrapper = document.createElement("div")
   // Touch swipe-to-remove for mobile
   let startX = 0;
+  let startY = 0;
   let currentX = 0;
   let isSwiping = false;
 
   wrapper.addEventListener("touchstart", (e) => {
     startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
     isSwiping = false;
   });
 
   wrapper.addEventListener("touchmove", (e) => {
     currentX = e.touches[0].clientX;
-    const diff = currentX - startX;
+    const currentY = e.touches[0].clientY;
 
-    // activate swipe only after threshold (prevents scroll conflict)
-    if (!isSwiping && Math.abs(diff) > 10) {
-      isSwiping = true;
+    const diffX = currentX - startX;
+    const diffY = currentY - startY;
+
+    // only trigger swipe if horizontal movement is dominant
+    if (!isSwiping) {
+      if (Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY)) {
+        isSwiping = true;
+      } else {
+        return;
+      }
     }
 
-    if (!isSwiping) return;
+    e.preventDefault();
 
-    e.preventDefault(); // lock vertical scroll when swiping
-
-    if (diff < 0) {
-      wrapper.style.transform = `translateX(${diff}px)`;
-      wrapper.style.opacity = Math.max(0.5, 1 + diff / 200);
+    if (diffX < 0) {
+      wrapper.style.transform = `translateX(${diffX}px)`;
+      wrapper.style.opacity = Math.max(0.5, 1 + diffX / 200);
     }
   });
 
