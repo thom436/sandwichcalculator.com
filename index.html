@@ -30,7 +30,6 @@ body {
   -webkit-overflow-scrolling: touch;
   touch-action: manipulation;
   overscroll-behavior-y: contain;
-  padding-top: 120px;
 }
 
 .logo {
@@ -71,7 +70,7 @@ body {
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
   border: 1px solid #eee;
   position: relative;
-  z-index: 1;
+  z-index: 0;
   transition: 0.15s ease;
   cursor: pointer;
   will-change: transform;
@@ -158,10 +157,10 @@ select:focus-visible {
 
 .result {
   position: fixed;
-  top: 20px;
+  bottom: 20px;
   left: 20px;
   right: 20px;
-  z-index: 999;
+  z-index: 9999;
   background: #ffffff;
   padding: 18px;
   border-radius: 24px;
@@ -175,7 +174,13 @@ select:focus-visible {
   overflow: hidden;
   margin-bottom: 10px;
   padding-bottom: calc(18px + env(safe-area-inset-bottom));
-  margin-top: 20px;
+  transform: scale(0.95);
+  opacity: 0.9;
+}
+
+.result.active {
+  transform: scale(1);
+  opacity: 1;
 }
 button {
   -webkit-tap-highlight-color: transparent;
@@ -599,6 +604,8 @@ function createAddonSelect(removable = true){
   wrapper.style.alignItems = "center"
   wrapper.style.gap = "8px"
   wrapper.style.marginTop = "8px"
+  wrapper.style.position = "relative"
+  wrapper.style.overflow = "visible"
 
   const select = document.createElement("select")
   // prevent card click from immediately closing select
@@ -612,6 +619,8 @@ function createAddonSelect(removable = true){
     calc()
   }
   select.style.flex = "1"
+  select.style.position = "relative"
+  select.style.zIndex = "1"
 
   select.innerHTML = '<option value="">選擇加料</option>'
 
@@ -783,11 +792,13 @@ animateNumber(proEl, lastProtein, total.protein, 0)
 lastCal = total.cal
 lastProtein = total.protein
 
-resultEl.classList.remove("update")
-void resultEl.offsetWidth
-resultEl.classList.add("update")
-if (navigator.vibrate) navigator.vibrate(5);
-resultEl.style.visibility = "visible"
+  resultEl.classList.remove("update")
+  void resultEl.offsetWidth
+  resultEl.classList.add("update")
+  resultEl.classList.add("active")
+  setTimeout(() => resultEl.classList.remove("active"), 600)
+  if (navigator.vibrate) navigator.vibrate(5);
+  resultEl.style.visibility = "visible"
 }
 
 init()
