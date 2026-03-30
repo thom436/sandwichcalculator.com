@@ -262,12 +262,46 @@ input[type="checkbox"]:active::after {
   opacity: 1;
 }
 
-@media (hover: none) {
-  .card:hover,
-  button:hover {
-    transform: none;
+</style>
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #000;
+    color: #fff;
+  }
+
+  .card {
+    background: #1c1c1e;
+    border: 1px solid #2c2c2e;
     box-shadow: none;
-    filter: none;
+  }
+
+  select {
+    background: #2c2c2e;
+    color: #fff;
+    border: 1px solid #3a3a3c;
+  }
+
+  select:hover {
+    background: #3a3a3c;
+  }
+
+  .result {
+    background: #1c1c1e;
+    border: 1px solid #2c2c2e;
+    color: #fff;
+  }
+
+  label {
+    color: #f2f2f7;
+  }
+
+  .logo .title-sub {
+    color: #aaa;
+  }
+
+  #addonEmpty {
+    color: #8e8e93;
   }
 }
 </style>
