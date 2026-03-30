@@ -290,7 +290,7 @@ input[type="checkbox"]:active::after {
 </div>
 
 <!-- 加料 -->
-<div class="card" onclick="document.querySelector('#addonList select')?.focus()">
+<div class="card">
 <label style="flex-direction:column;align-items:flex-start;">
   <span>加料</span>
   <span id="addonLabel" style="color:#8e8e93;font-size:13px;font-weight:400;">Add-ons (0)</span>
@@ -514,12 +514,67 @@ calc()
 
 function createAddonSelect(removable = true){
   const wrapper = document.createElement("div")
+  // Touch swipe-to-remove for mobile
+  let startX = 0;
+  let currentX = 0;
+  let isSwiping = false;
+
+  wrapper.addEventListener("touchstart", (e) => {
+    // prevent swipe interfering with select tap
+    if (e.target.tagName === "SELECT") return;
+    startX = e.touches[0].clientX;
+    isSwiping = true;
+  });
+
+  wrapper.addEventListener("touchmove", (e) => {
+    if (!isSwiping || e.target.tagName === "SELECT") return;
+    currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+
+    if (diff < 0) {
+      wrapper.style.transform = `translateX(${diff}px)`;
+      wrapper.style.opacity = Math.max(0.5, 1 + diff / 200);
+    }
+  });
+
+  wrapper.addEventListener("touchend", (e) => {
+    if (!isSwiping) return;
+    const diff = currentX - startX;
+
+    if (diff < -80) {
+      wrapper.style.transition = "all 0.2s ease";
+      wrapper.style.transform = "translateX(-120%)";
+      wrapper.style.opacity = "0";
+
+      setTimeout(() => {
+        wrapper.remove();
+        updateAddonUI();
+        calc();
+      }, 200);
+    } else {
+      wrapper.style.transition = "all 0.2s ease";
+      wrapper.style.transform = "translateX(0)";
+      wrapper.style.opacity = "1";
+    }
+
+    isSwiping = false;
+    startX = 0;
+    currentX = 0;
+  });
+
   wrapper.style.display = "flex"
   wrapper.style.alignItems = "center"
   wrapper.style.gap = "8px"
   wrapper.style.marginTop = "8px"
 
   const select = document.createElement("select")
+  // prevent card click from immediately closing select
+  select.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+  select.addEventListener("touchstart", (e) => {
+    e.stopPropagation();
+  });
   select.onchange = () => {
     calc()
   }
@@ -550,13 +605,7 @@ function createAddonSelect(removable = true){
     removeBtn.style.cursor = "pointer"
     removeBtn.style.color = "#1c1c1e"
     removeBtn.style.transition = "all 0.15s ease"
-
-    removeBtn.onmouseenter = () => {
-      removeBtn.style.background = "#d1d1d6"
-    }
-    removeBtn.onmouseleave = () => {
-      removeBtn.style.background = "#e5e5ea"
-    }
+    removeBtn.style.opacity = "0.6"
 
     removeBtn.onclick = () => {
       wrapper.remove()
