@@ -144,8 +144,8 @@ button:active {
 input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
-  width: 36px;
-  height: 20px;
+  width: 44px;
+  height: 26px;
   background: #e5e5ea;
   border-radius: 999px;
   position: relative;
@@ -157,8 +157,8 @@ input[type="checkbox"] {
 input[type="checkbox"]::after {
   content: "";
   position: absolute;
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   background: #fff;
   border-radius: 50%;
   top: 2px;
@@ -172,7 +172,7 @@ input[type="checkbox"]:checked {
 }
 
 input[type="checkbox"]:checked::after {
-  transform: translateX(16px);
+  transform: translateX(18px);
 }
 
 input[type="checkbox"]:active::after {
@@ -379,7 +379,8 @@ const nameMap = {
 
 sortedMain.forEach(item=>{
   let en = nameMap[item.name] || ""
-  main.innerHTML += `<option>${item.name} (${en})</option>`
+  const label = en ? `${item.name} ${en}` : item.name;
+  main.innerHTML += `<option>${label}</option>`;
 })
 
 document.getElementById("main").selectedIndex = 1
@@ -405,11 +406,12 @@ const sauceNameMap = {
 
 Object.keys(data.sauce).forEach(i=>{
   let en = sauceNameMap[i] || ""
-  document.getElementById("sauce1").innerHTML += `<option>${i} (${en})</option>`
-  document.getElementById("sauce2").innerHTML += `<option>${i} (${en})</option>`
+  const label = en ? `${i} ${en}` : i;
+  document.getElementById("sauce1").innerHTML += `<option>${label}</option>`;
+  document.getElementById("sauce2").innerHTML += `<option>${label}</option>`;
 })
 
-document.getElementById("sauce1").value = "橄欖油 (Olive Oil)"
+document.getElementById("sauce1").value = "橄欖油 Olive Oil"
 
 document.getElementById("sauce1").disabled = false
 
@@ -426,7 +428,8 @@ function createAddonSelect(){
 
   Object.keys(data.addon).forEach(i=>{
     let en = addonNameMap[i] || ""
-    select.innerHTML += `<option>${i} (${en})</option>`
+    const label = en ? `${i} ${en}` : i;
+    select.innerHTML += `<option>${label}</option>`;
   })
 
   return select
@@ -438,7 +441,7 @@ function addAddon(defaultValue = ""){
   
   if(defaultValue){
     const en = addonNameMap[defaultValue] || ""
-    select.value = `${defaultValue} (${en})`
+    select.value = en ? `${defaultValue} ${en}` : defaultValue;
   }
 
   container.appendChild(select)
@@ -462,7 +465,7 @@ function calc(){
 let total = {cal:0, protein:0}
 
 let mainRaw = document.getElementById("main").value
-let main = mainRaw.split(" (")[0]
+let main = mainRaw.split(" ")[0]
 
 if(main && data.main[main]){
   total.cal += data.main[main].cal
@@ -480,7 +483,7 @@ const addonSelects = document.querySelectorAll("#addonList select")
 
 addonSelects.forEach(sel=>{
   let raw = sel.value
-  let name = raw.split(" (")[0]
+  let name = raw.split(" ")[0]
 
   if(name && data.addon[name]){
     total.cal += data.addon[name].cal
@@ -492,8 +495,8 @@ let sauce1Raw = document.getElementById("sauce1").value
 let sauce2Enabled = document.getElementById("sauce2Toggle").checked
 let sauce2Raw = document.getElementById("sauce2").value
 
-let sauce1 = sauce1Raw.split(" (")[0]
-let sauce2 = sauce2Raw.split(" (")[0]
+let sauce1 = sauce1Raw.split(" ")[0]
+let sauce2 = sauce2Raw.split(" ")[0]
 
 if(sauce1){
   total.cal += data.sauce[sauce1].cal / (sauce2Enabled ? 2 : 1)
