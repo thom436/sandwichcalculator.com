@@ -2,11 +2,103 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
-body { font-family: sans-serif; padding: 20px; }
-.section { margin-top: 20px; }
-.result { margin-top: 20px; font-size: 18px; color: red; }
-select, input { margin-top: 5px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont;
+  background: #f2f2f7;
+  margin: 0;
+  padding: 20px;
+  color: #000;
+}
+
+h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 18px;
+  padding: 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+label {
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+select {
+  width: 100%;
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: none;
+  background: #f2f2f7;
+  font-size: 16px;
+  appearance: none;
+}
+
+select:focus {
+  outline: none;
+  background: #e9e9ee;
+}
+
+select:disabled {
+  opacity: 0.5;
+}
+
+.toggle {
+  appearance: none;
+  width: 40px;
+  height: 24px;
+  background: #d1d1d6;
+  border-radius: 12px;
+  position: relative;
+  transition: 0.25s;
+}
+
+.toggle:checked {
+  background: #34c759;
+}
+
+.toggle::after {
+  content: "";
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: 0.25s;
+}
+
+.toggle:checked::after {
+  transform: translateX(16px);
+}
+
+.result {
+  position: sticky;
+  bottom: 0;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(12px);
+  padding: 18px;
+  border-radius: 18px;
+  font-size: 18px;
+  font-weight: 600;
+  box-shadow: 0 -6px 20px rgba(0,0,0,0.08);
+}
+
+.result strong {
+  font-size: 20px;
+}
 </style>
 </head>
 
@@ -15,41 +107,48 @@ select, input { margin-top: 5px; }
 <h2>Subway 計算機</h2>
 
 <!-- 主餐 -->
-<div class="section">
-<h3>口味</h3>
+<div class="card">
+<label>
+  <span>口味</span>
+  <span style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:14px;color:#666;">雙倍肉</span>
+    <input type="checkbox" id="double" class="toggle" onchange="calc()">
+  </span>
+</label>
 <select id="main" onchange="calc()"></select>
 </div>
 
-<!-- 雙倍肉 -->
-<div class="section">
-<label><input type="checkbox" id="double" onchange="calc()"> 雙倍肉量</label>
-</div>
-
 <!-- 加料 -->
-<div class="section">
-<h3>加料</h3>
-
-<label>
-<input type="checkbox" onchange="toggleAddon(this)"> 啟用
-</label>
-<select id="addon" disabled onchange="calc()"></select>
-
+<div class="card">
+<label>加料</label>
+<select id="addon1" disabled onchange="calc()"></select>
+<select id="addon2" disabled onchange="calc()"></select>
 </div>
 
 <!-- 醬料 -->
-<div class="section">
-<h3>醬料</h3>
-<select id="sauce" onchange="calc()"></select>
+<div class="card">
+<label>
+<span>醬料（可選兩種，各半）</span>
+<input type="checkbox" id="sauceToggle" class="toggle" onchange="toggleSauce(this)" checked>
+</label>
+<select id="sauce1" disabled onchange="calc()"></select>
+
+<label style="margin-top:10px;">
+  <span>第二種醬料</span>
+  <input type="checkbox" id="sauce2Toggle" class="toggle" onchange="toggleSauce2(this)">
+</label>
+<select id="sauce2" disabled onchange="calc()"></select>
 </div>
 
 <!-- 結果 -->
-<div class="result" id="result"></div>
+<div class="result" id="result">
+卡路里: 0 kcal<br>
+蛋白質: 0 g
+</div>
 
 <script>
 
-// ===== 資料庫 =====
 const data = {
-
 main:{
 "照燒雞肉":{cal:362,protein:27},
 "厚切嫩牛":{cal:366,protein:26},
@@ -103,7 +202,6 @@ addon:{
 },
 
 sauce:{
-"不加":{cal:0},
 "千島醬":{cal:36.7},
 "紅酒醋":{cal:0.3},
 "美乃滋":{cal:100},
@@ -115,47 +213,86 @@ sauce:{
 "墨西哥西南醬":{cal:66},
 "橄欖油":{cal:44}
 }
-
 }
 
-// ===== 初始化 dropdown =====
 function init(){
 let main = document.getElementById("main")
 main.innerHTML = '<option value="">請選擇</option>'
-Object.keys(data.main).forEach(i=>{
-main.innerHTML += `<option>${i}</option>`
+
+let sortedMain = Object.entries(data.main)
+  .map(([name, v]) => ({
+    name,
+    efficiency: v.protein / v.cal
+  }))
+  .sort((a, b) => b.efficiency - a.efficiency)
+
+sortedMain.forEach(item=>{
+  let label = ""
+  if(item.efficiency > 0.075){
+    label = "🔥 高蛋白效率"
+  } else if(item.efficiency > 0.065){
+    label = "⚡ 中等"
+  } else {
+    label = "・偏低"
+  }
+
+  main.innerHTML += `<option>${item.name}（${label}）</option>`
 })
 
-let addon = document.getElementById("addon")
-addon.innerHTML = '<option value="">選擇加料</option>'
+let addon1 = document.getElementById("addon1")
+let addon2 = document.getElementById("addon2")
+
+addon1.innerHTML = '<option value="">選擇加料</option>'
+addon2.innerHTML = '<option value="">選擇加料</option>'
+
 Object.keys(data.addon).forEach(i=>{
-addon.innerHTML += `<option>${i}</option>`
+  addon1.innerHTML += `<option>${i}</option>`
+  addon2.innerHTML += `<option>${i}</option>`
 })
+document.getElementById("addon1").disabled = false
+document.getElementById("addon2").disabled = false
 
-let sauce = document.getElementById("sauce")
+let sauce1 = document.getElementById("sauce1")
+let sauce2 = document.getElementById("sauce2")
+
+sauce1.innerHTML = '<option value="">選擇醬料</option>'
+sauce2.innerHTML = '<option value="">選擇醬料</option>'
+
 Object.keys(data.sauce).forEach(i=>{
-sauce.innerHTML += `<option>${i}</option>`
+  sauce1.innerHTML += `<option>${i}</option>`
+  sauce2.innerHTML += `<option>${i}</option>`
 })
+document.getElementById("sauce1").disabled = false
+document.getElementById("sauce2").disabled = true
 }
 
-// ===== 控制加料開關 =====
-function toggleAddon(cb){
-document.getElementById("addon").disabled = !cb.checked
-calc()
+
+function toggleSauce(cb){
+  const enabled = cb.checked
+  document.getElementById("sauce1").disabled = !enabled
+
+  document.getElementById("sauce2Toggle").checked = false
+  document.getElementById("sauce2").disabled = true
+
+  calc()
 }
 
-// ===== 核心計算 =====
+function toggleSauce2(cb){
+  document.getElementById("sauce2").disabled = !cb.checked
+  calc()
+}
+
 function calc(){
 let total = {cal:0, protein:0}
 
-// 主餐
-let main = document.getElementById("main").value
-if(main){
-total.cal += data.main[main].cal
-total.protein += data.main[main].protein
+let mainRaw = document.getElementById("main").value
+let main = mainRaw.split("（")[0]
+
+if(main && data.main[main]){
+  total.cal += data.main[main].cal
+  total.protein += data.main[main].protein
 }
 
-// 雙倍肉（XLOOKUP）
 if(document.getElementById("double").checked && main){
 if(data.addon[main]){
 total.cal += data.addon[main].cal
@@ -163,22 +300,34 @@ total.protein += data.addon[main].protein
 }
 }
 
-// 加料
-let addon = document.getElementById("addon").value
-if(addon){
-total.cal += data.addon[addon].cal
-total.protein += data.addon[addon].protein
+let addon1 = document.getElementById("addon1").value
+let addon2 = document.getElementById("addon2").value
+
+if(addon1){
+  total.cal += data.addon[addon1].cal
+  total.protein += data.addon[addon1].protein
+}
+if(addon2){
+  total.cal += data.addon[addon2].cal
+  total.protein += data.addon[addon2].protein
 }
 
-// 醬料
-let sauce = document.getElementById("sauce").value
-if(sauce){
-total.cal += data.sauce[sauce].cal
+let sauceEnabled = document.getElementById("sauceToggle").checked
+let sauce1 = document.getElementById("sauce1").value
+let sauce2Enabled = document.getElementById("sauce2Toggle").checked
+let sauce2 = document.getElementById("sauce2").value
+
+if(sauceEnabled){
+  if(sauce1){
+    total.cal += data.sauce[sauce1].cal / (sauce2Enabled ? 2 : 1)
+  }
+  if(sauce2Enabled && sauce2){
+    total.cal += data.sauce[sauce2].cal / 2
+  }
 }
 
-// 顯示
 document.getElementById("result").innerHTML =
-`卡路里: ${total.cal} kcal<br>蛋白質: ${total.protein} g`
+`🔥 ${total.cal} kcal<br><strong>${total.protein} g protein</strong>`
 }
 
 init()
