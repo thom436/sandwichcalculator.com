@@ -436,7 +436,6 @@ updateMainPickerLabel()
 document.getElementById("sauce1").value = ""
 updateSaucePickerLabel("sauce1")
 updateSauce2Visibility()
-bindSauce1Drag()
 
 updateAddonUI()
 
@@ -453,14 +452,12 @@ function createAddonSelect(removable = true){
   let isSwiping = false;
 
   wrapper.addEventListener("touchstart", (e) => {
-    if (wrapper.dataset.dragging === "1") return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     isSwiping = false;
   });
 
   wrapper.addEventListener("touchmove", (e) => {
-    if (wrapper.dataset.dragging === "1") return;
     currentX = e.touches[0].clientX;
     const currentY = e.touches[0].clientY;
 
@@ -485,7 +482,6 @@ function createAddonSelect(removable = true){
   });
 
   wrapper.addEventListener("touchend", (e) => {
-    if (wrapper.dataset.dragging === "1") return;
     const diff = currentX - startX;
 
     if (!isSwiping) {
@@ -522,42 +518,10 @@ function createAddonSelect(removable = true){
   wrapper.style.position = "relative"
   wrapper.style.overflow = "visible"
 
-  // Match sauce drag principle: drag starts when vertical move is detected.
-  let pointerStartX = 0
-  let pointerStartY = 0
-  let pointerPressed = false
-
-  wrapper.addEventListener("pointerdown", (e)=>{
-    if(e.pointerType === "mouse" && e.button !== 0) return
-    if(e.target && e.target.closest('[data-role="remove-addon"]')) return
-    if(wrapper.dataset.dragging === "1") return
-
-    pointerStartX = e.clientX
-    pointerStartY = e.clientY
-    pointerPressed = true
-  })
-
-  wrapper.addEventListener("pointermove", (e)=>{
-    if(!pointerPressed) return
-    const movedX = e.clientX - pointerStartX
-    const movedY = e.clientY - pointerStartY
-    const absX = Math.abs(movedX)
-    const absY = Math.abs(movedY)
-    if(absY > 8 && absY > absX){
-      pointerPressed = false
-      startAddonDrag(e, wrapper, e.clientY)
-    }
-  })
-
-  wrapper.addEventListener("pointerup", ()=>{ pointerPressed = false })
-  wrapper.addEventListener("pointercancel", ()=>{ pointerPressed = false })
-
   const display = document.createElement("div")
   display.className = "picker-field picker-field-fill picker-field--placeholder"
   display.textContent = "尚未選擇加料"
   display.onclick = ()=>{
-    const suppressUntil = Number(wrapper.dataset.suppressOpenUntil || "0")
-    if(Date.now() < suppressUntil) return
     openAddonPicker(addonActiveGroup, wrapper)
   }
 
@@ -655,11 +619,6 @@ function updateAddonUI(){
     addonActions.style.display = count === 0 ? "none" : "flex"
   }
 
-  const showDragIcon = count > 1
-  document.querySelectorAll("#addonList .addon-row .picker-field").forEach(el=>{
-    el.classList.toggle("picker-draggable", showDragIcon)
-  })
-
   // show swipe hint only when there are add-ons
   const hint = document.getElementById("swipeHint")
   if (hint) {
@@ -667,76 +626,10 @@ function updateAddonUI(){
   }
 }
 
-function startAddonDrag(e, wrapper, startClientY = null){
-  if(!e || !wrapper) return
-  const container = document.getElementById("addonList")
-  if(!container) return
-
-  e.preventDefault()
-  e.stopPropagation()
-  wrapper.dataset.dragging = "1"
-  wrapper.style.opacity = "0.8"
-  wrapper.style.zIndex = "3"
-  wrapper.dataset.suppressOpenUntil = String(Date.now() + 320)
-  setGlobalDraggingLock(true)
-
-  const startY = startClientY ?? e.clientY
-  let currentY = startY
-
-  const onMove = (ev) => {
-    ev.preventDefault()
-    currentY = ev.clientY
-    const diffY = currentY - startY
-    wrapper.style.transition = "none"
-    wrapper.style.transform = `translateY(${diffY}px)`
-  }
-
-  const onUp = () => {
-    const rows = Array.from(container.querySelectorAll(".addon-row")).filter(r => r !== wrapper)
-    const target = rows.find(row => {
-      const rect = row.getBoundingClientRect()
-      return currentY < rect.top + rect.height / 2
-    })
-    if(target){
-      container.insertBefore(wrapper, target)
-    } else {
-      container.appendChild(wrapper)
-    }
-
-    wrapper.style.transition = "all 0.2s ease"
-    wrapper.style.transform = "translateY(0)"
-    wrapper.style.opacity = "1"
-    wrapper.style.zIndex = "1"
-    delete wrapper.dataset.dragging
-    wrapper.dataset.suppressOpenUntil = String(Date.now() + 320)
-    setGlobalDraggingLock(false)
-    document.removeEventListener("pointermove", onMove)
-    document.removeEventListener("pointerup", onUp)
-    document.removeEventListener("pointercancel", onUp)
-    calc()
-  }
-
-  document.addEventListener("pointermove", onMove, { passive:false })
-  document.addEventListener("pointerup", onUp)
-  document.addEventListener("pointercancel", onUp)
-}
-
 function getSauceDisplayText(value){
   if(!value) return NO_SAUCE_LABEL
   const en = sauceNameMap[value] || ""
   return en ? `${value} ${en}` : value
-}
-
-function updateSauceDragUI(){
-  const hasSecondSauce = !!document.querySelector('#sauce2List input[data-role="sauce-value"]')
-  const sauce1Picker = document.getElementById("sauce1Picker")
-  if(sauce1Picker){
-    sauce1Picker.classList.toggle("picker-draggable", hasSecondSauce)
-  }
-  const sauce2Display = document.querySelector('#sauce2List [data-role="sauce-display"]')
-  if(sauce2Display){
-    sauce2Display.classList.toggle("picker-draggable", hasSecondSauce)
-  }
 }
 
 function updateSauce2Visibility(){
@@ -749,14 +642,12 @@ function updateSauce2Visibility(){
   if(!sauce1Value){
     list.innerHTML = ""
     section.style.display = "none"
-    updateSauceDragUI()
     return
   }
 
   const hasSecondSauceRow = list.children.length > 0
   section.style.display = hasSecondSauceRow ? "none" : "flex"
   btn.style.display = "inline-block"
-  updateSauceDragUI()
 }
 
 function updateSaucePickerLabel(target = "sauce1"){
@@ -785,142 +676,6 @@ function updateSaucePickerLabel(target = "sauce1"){
   }
 }
 
-function swapSauceOrder(){
-  const sauce1Input = document.getElementById("sauce1")
-  const sauce2Input = document.querySelector('#sauce2List input[data-role="sauce-value"]')
-  if(!sauce1Input || !sauce2Input) return
-
-  const sauce1Value = sauce1Input.value || ""
-  const sauce2Value = sauce2Input.value || ""
-  if(!sauce1Value || !sauce2Value) return
-
-  sauce1Input.value = sauce2Value
-  sauce2Input.value = sauce1Value
-  updateSaucePickerLabel("sauce1")
-  updateSaucePickerLabel("sauce2")
-  calc()
-}
-
-let sauceSuppressOpenUntil = 0
-let saucePickerTapLockUntil = 0
-
-function setGlobalDraggingLock(locked){
-  document.body.classList.toggle("dragging-lock", !!locked)
-}
-
-function suppressSaucePickerOpen(){
-  sauceSuppressOpenUntil = Date.now() + 320
-}
-
-function openSauce1Picker(){
-  if(Date.now() < sauceSuppressOpenUntil) return
-  openSaucePicker("sauce1")
-}
-
-function openSaucePickerSafe(target = "sauce1"){
-  const now = Date.now()
-  if(now < saucePickerTapLockUntil) return
-  saucePickerTapLockUntil = now + 220
-
-  if(target === "sauce1"){
-    openSauce1Picker()
-    return
-  }
-  if(now < sauceSuppressOpenUntil) return
-  openSaucePicker("sauce2")
-}
-
-function startSauceRowDrag(e, rowEl, rowType, startClientY = null){
-  if(!e || !rowEl) return
-  const sauce1Row = document.getElementById("sauce1Row")
-  const sauce2Row = document.querySelector("#sauce2List .sauce-row")
-  if(!sauce1Row || !sauce2Row) return
-
-  e.preventDefault()
-  e.stopPropagation()
-  rowEl.dataset.dragging = "1"
-  rowEl.style.opacity = "0.85"
-  rowEl.style.zIndex = "3"
-  suppressSaucePickerOpen()
-  setGlobalDraggingLock(true)
-
-  const firstRect = sauce1Row.getBoundingClientRect()
-  const secondRect = sauce2Row.getBoundingClientRect()
-  const swapMidY = (firstRect.bottom + secondRect.top) / 2
-
-  const startY = startClientY ?? e.clientY
-  let currentY = startY
-
-  const onMove = (ev)=>{
-    ev.preventDefault()
-    currentY = ev.clientY
-    const diffY = currentY - startY
-    rowEl.style.transition = "none"
-    rowEl.style.transform = `translateY(${diffY}px)`
-  }
-
-  const onUp = ()=>{
-    rowEl.style.transition = "all 0.2s ease"
-    rowEl.style.transform = "translateY(0)"
-    rowEl.style.opacity = "1"
-    rowEl.style.zIndex = "1"
-    delete rowEl.dataset.dragging
-    suppressSaucePickerOpen()
-    setGlobalDraggingLock(false)
-
-    const shouldSwap = (rowType === "sauce1" && currentY > swapMidY) || (rowType === "sauce2" && currentY < swapMidY)
-    if(shouldSwap){
-      swapSauceOrder()
-    }
-
-    document.removeEventListener("pointermove", onMove)
-    document.removeEventListener("pointerup", onUp)
-    document.removeEventListener("pointercancel", onUp)
-  }
-
-  document.addEventListener("pointermove", onMove, { passive:false })
-  document.addEventListener("pointerup", onUp)
-  document.addEventListener("pointercancel", onUp)
-}
-
-function bindSauce1Drag(){
-  const row = document.getElementById("sauce1Row")
-  const picker = document.getElementById("sauce1Picker")
-  if(!row || !picker || row.dataset.dragBound === "1") return
-  row.dataset.dragBound = "1"
-
-  let pointerStartX = 0
-  let pointerStartY = 0
-  let pointerPressed = false
-
-  const clearPointer = ()=>{ pointerPressed = false }
-
-  row.addEventListener("pointerdown", (e)=>{
-    if(e.pointerType === "mouse" && e.button !== 0) return
-    if(e.target && e.target.closest("#sauce1RemoveBtn")) return
-    if(row.dataset.dragging === "1") return
-    pointerStartX = e.clientX
-    pointerStartY = e.clientY
-    pointerPressed = true
-  })
-
-  row.addEventListener("pointermove", (e)=>{
-    if(!pointerPressed) return
-    const hasSecondSauce = !!document.querySelector('#sauce2List input[data-role="sauce-value"]')
-    if(!hasSecondSauce) return
-    const diffX = e.clientX - pointerStartX
-    const diffY = e.clientY - pointerStartY
-    const absX = Math.abs(diffX)
-    const absY = Math.abs(diffY)
-    if(absY > 8 && absY > absX){
-      pointerPressed = false
-      startSauceRowDrag(e, row, "sauce1", e.clientY)
-    }
-  })
-
-  row.addEventListener("pointerup", clearPointer)
-  row.addEventListener("pointercancel", clearPointer)
-}
 
 function openSaucePicker(target = "sauce1"){
   const modal = document.getElementById("sauceModal")
@@ -998,40 +753,12 @@ function createSauceSelect(){
   wrapper.style.gap = "8px"
   wrapper.style.marginTop = "8px"
 
-  let pointerStartX = 0
-  let pointerStartY = 0
-  let pointerPressed = false
-
-  wrapper.addEventListener("pointerdown", (e)=>{
-    if(e.pointerType === "mouse" && e.button !== 0) return
-    if(e.target && e.target.closest("button")) return
-    if(wrapper.dataset.dragging === "1") return
-    pointerStartX = e.clientX
-    pointerStartY = e.clientY
-    pointerPressed = true
-  })
-
-  wrapper.addEventListener("pointermove", (e)=>{
-    if(!pointerPressed) return
-    const movedX = e.clientX - pointerStartX
-    const movedY = e.clientY - pointerStartY
-    const absX = Math.abs(movedX)
-    const absY = Math.abs(movedY)
-    if(absY > 8 && absY > absX){
-      pointerPressed = false
-      startSauceRowDrag(e, wrapper, "sauce2", e.clientY)
-    }
-  })
-
-  wrapper.addEventListener("pointerup", ()=>{ pointerPressed = false })
-  wrapper.addEventListener("pointercancel", ()=>{ pointerPressed = false })
-
   const display = document.createElement("div")
   display.dataset.role = "sauce-display"
-  display.className = "picker-field picker-field-fill picker-field--placeholder picker-draggable"
+  display.className = "picker-field picker-field-fill picker-field--placeholder"
   display.textContent = NO_SAUCE_LABEL
   display.onclick = ()=>{
-    openSaucePickerSafe("sauce2")
+    openSaucePicker("sauce2")
   }
 
   const hiddenValue = document.createElement("input")

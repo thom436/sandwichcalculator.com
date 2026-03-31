@@ -17,13 +17,6 @@ body {
   overscroll-behavior-y: contain;
 }
 
-body.dragging-lock,
-body.dragging-lock * {
-  -webkit-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
-}
-
 .logo {
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, system-ui;
   font-size: 38px;
@@ -171,26 +164,6 @@ select:focus-visible {
 
 .picker-field--placeholder {
   color: #8e8e93;
-}
-
-.picker-draggable {
-  position: relative;
-  padding-right: 44px;
-  user-select: none;
-}
-
-.picker-draggable::after {
-  content: "≡";
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -1px;
-  color: #8e8e93;
-  opacity: 0.75;
-  pointer-events: none;
 }
 
 #addonList .addon-row .picker-field {
@@ -451,10 +424,6 @@ input[type="checkbox"]:active {
 
   .picker-field--placeholder {
     color: #9aa0ad !important;
-  }
-
-  .picker-draggable::after {
-    color: #9aa0ad;
   }
 
   #mainPicker:not(.picker-field--placeholder) {
