@@ -270,4 +270,22 @@ input[type="checkbox"]:active::after {
     color: #aaa;
   }
 
+  #mainModal > div,
+  #addonModal > div,
+  #sauceModal > div {
+    background: #1c1c1e !important;
+    color: #f2f2f7 !important;
+  }
+
+  #mainCategoriesWrapper,
+  #addonCategoriesWrapper {
+    background: #1c1c1e !important;
+  }
+
+  #mainItems > div,
+  #addonItems > div,
+  #sauceItems > div {
+    border-bottom: 1px solid #2c2c2e !important;
+  }
+
 }
