@@ -244,8 +244,15 @@ function isPickerTapSuppressed(){
   return Date.now() < suppressPickerTapUntil
 }
 
+function runAfterTapSuppression(fn){
+  const waitMs = suppressPickerTapUntil - Date.now()
+  if(waitMs <= 0) return false
+  setTimeout(fn, waitMs + 24)
+  return true
+}
+
 function openSauce1Picker(){
-  if(isPickerTapSuppressed()) return
+  if(runAfterTapSuppression(openSauce1Picker)) return
   openSaucePicker("sauce1")
 }
 
@@ -1191,8 +1198,15 @@ removeBtn.onclick = (e)=>{
 }
 
 function addSauce2(){
+  if(runAfterTapSuppression(addSauce2)) return
   const container = document.getElementById("sauce2List")
-  if(container.children.length > 0) return
+  const existingRow = container.querySelector(".sauce-row")
+  if(existingRow){
+    if(existingRow.classList.contains("removing")){
+      setTimeout(addSauce2, 200)
+    }
+    return
+  }
 
   const item = createSauceSelect()
   container.appendChild(item)
@@ -1294,6 +1308,18 @@ function toggleResultDetails(){
     detailBtn.setAttribute("aria-expanded", resultDetailsExpanded ? "true" : "false")
   }
   if(breakdownWrap) breakdownWrap.style.display = resultDetailsExpanded ? "block" : "none"
+}
+
+function bindResultCardTap(){
+  const resultEl = document.getElementById("result")
+  if(!resultEl || resultEl.dataset.tapBound === "1") return
+  resultEl.dataset.tapBound = "1"
+
+  resultEl.addEventListener("click", (e)=>{
+    if(resultMode !== "stats") return
+    if(e.target.closest("#copyShareBtn")) return
+    toggleResultDetails()
+  })
 }
 
 function triggerResultPop(){
@@ -1482,6 +1508,7 @@ lastMainForFeedback = main
 }
 
 init()
+bindResultCardTap()
 attachSwipeToReveal(document.getElementById("sauce1Row"), ()=>{
   removeSauce1()
 }, ()=> !!document.getElementById("sauce1").value)
