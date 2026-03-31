@@ -110,6 +110,12 @@ const sauceNameMap = {
 const NO_SAUCE_LABEL = "不加醬 No sauce"
 let lastShareText = ""
 let copyShareResetTimer = null
+const RECENT_LIMIT = 3
+const RECENT_KEYS = {
+  main: "recent_main",
+  addon: "recent_addon",
+  sauce: "recent_sauce"
+}
 
 function buildGroups(seedGroups, allItems, extraGroupName = "其他"){
   const groups = {}
@@ -143,6 +149,49 @@ function formatKcal(value){
 function formatProtein(value){
   const rounded = Math.round(value * 10) / 10
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+function getRecentItems(type, validItems = null){
+  const key = RECENT_KEYS[type]
+  if(!key) return []
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]")
+    if(!Array.isArray(parsed)) return []
+    const unique = []
+    parsed.forEach(item=>{
+      if(typeof item !== "string" || !item) return
+      if(unique.includes(item)) return
+      unique.push(item)
+    })
+    if(validItems){
+      const validSet = validItems instanceof Set ? validItems : new Set(validItems)
+      return unique.filter(item => validSet.has(item)).slice(0, RECENT_LIMIT)
+    }
+    return unique.slice(0, RECENT_LIMIT)
+  } catch (_) {
+    return []
+  }
+}
+
+function saveRecentItem(type, item){
+  if(!item) return
+  const key = RECENT_KEYS[type]
+  if(!key) return
+  const next = [item, ...getRecentItems(type).filter(v => v !== item)].slice(0, RECENT_LIMIT)
+  try {
+    localStorage.setItem(key, JSON.stringify(next))
+  } catch (_) {
+    // no-op
+  }
+}
+
+function appendRecentLabel(container){
+  const label = document.createElement("div")
+  label.textContent = "最近使用 Recent"
+  label.style.fontSize = "12px"
+  label.style.color = "#8e8e93"
+  label.style.padding = "10px 12px 6px"
+  container.appendChild(label)
 }
 
 function compactZhShareName(name){
@@ -236,12 +285,15 @@ function openMainPicker(defaultGroup = ""){
 function renderMainItems(group){
   const itemsEl = document.getElementById("mainItems")
   itemsEl.innerHTML = ""
+  const selectedMain = document.getElementById("main").value
 
   const sortedNames = [...(mainGroups[group] || [])]
     .filter(name => !!data.main[name])
     .sort((a,b)=> data.main[b].cal - data.main[a].cal)
 
-  sortedNames.forEach(name=>{
+  const recentMainNames = getRecentItems("main", Object.keys(data.main))
+
+  const renderMainItem = (name)=>{
     if(!data.main[name]) return;
 
     const div = document.createElement("div")
@@ -264,13 +316,28 @@ function renderMainItems(group){
     meta.style.color = "#8e8e93"
     meta.style.whiteSpace = "nowrap"
     meta.style.textAlign = "right"
+    meta.style.lineHeight = "1.2"
+
+    const rightWrap = document.createElement("div")
+    rightWrap.style.display = "flex"
+    rightWrap.style.alignItems = "center"
+    rightWrap.style.gap = "8px"
+    rightWrap.appendChild(meta)
+
+    if(name === selectedMain){
+      const check = document.createElement("span")
+      check.className = "modal-checkmark"
+      check.textContent = "✓"
+      rightWrap.appendChild(check)
+    }
 
     div.appendChild(textWrap)
-    div.appendChild(meta)
+    div.appendChild(rightWrap)
 
     div.onclick = ()=>{
       const mainSelect = document.getElementById("main")
       mainSelect.value = name
+      saveRecentItem("main", name)
       updateMainPickerLabel()
       document.getElementById("mainModal").style.display="none"
       shouldPopResultOnNextCalc = true
@@ -278,7 +345,16 @@ function renderMainItems(group){
     }
 
     itemsEl.appendChild(div)
-  })
+  }
+
+  const hasRecent = recentMainNames.length > 0
+  if(hasRecent){
+    appendRecentLabel(itemsEl)
+    recentMainNames.forEach(renderMainItem)
+  }
+
+  const restNames = sortedNames.filter(name => !recentMainNames.includes(name))
+  restNames.forEach(renderMainItem)
 }
 
 const addonNameMap = {
@@ -318,6 +394,7 @@ const addonGroups = buildGroups(addonSeedGroups, Object.keys(data.addon), "其�
 let addonActiveGroup = Object.keys(addonGroups)[0] || ""
 let addonPickerTargetRow = null
 let addonPickerTargetHidden = null
+let copyToastTimer = null
 
 function getSelectedAddonValues(ignoreSelect = null){
   const values = []
@@ -384,6 +461,12 @@ function renderAddonItems(group){
   const selected = new Set(getSelectedAddonValues(addonPickerTargetHidden))
   const editingCurrentValue = addonPickerTargetHidden ? addonPickerTargetHidden.value : ""
   const query = searchEl ? searchEl.value.trim().toLowerCase() : ""
+  const recentAddonNames = getRecentItems("addon", Object.keys(data.addon))
+    .filter(name => {
+      if(!query) return true
+      const en = addonNameMap[name] || ""
+      return `${name} ${en}`.toLowerCase().includes(query)
+    })
 
   const sortedAddonNames = [...(addonGroups[group] || [])]
     .filter(name => !!data.addon[name])
@@ -394,7 +477,9 @@ function renderAddonItems(group){
     })
     .sort((a,b)=> data.addon[b].cal - data.addon[a].cal)
 
-  if(!sortedAddonNames.length){
+  const groupNamesWithoutRecent = sortedAddonNames.filter(name => !recentAddonNames.includes(name))
+
+  if(!recentAddonNames.length && !groupNamesWithoutRecent.length){
     const empty = document.createElement("div")
     empty.style.padding = "14px 12px"
     empty.style.fontSize = "13px"
@@ -404,7 +489,7 @@ function renderAddonItems(group){
     return
   }
 
-  sortedAddonNames.forEach(name=>{
+  const renderAddonItem = (name)=>{
     if(!data.addon[name]) return;
 
     const div = document.createElement("div")
@@ -425,14 +510,26 @@ function renderAddonItems(group){
     meta.style.fontSize = "12px"
     meta.style.color = "#8e8e93"
     meta.style.whiteSpace = "nowrap"
+    const rightWrap = document.createElement("div")
+    rightWrap.style.display = "flex"
+    rightWrap.style.alignItems = "center"
+    rightWrap.style.gap = "8px"
+    rightWrap.appendChild(meta)
 
     div.appendChild(textWrap)
-    div.appendChild(meta)
     const alreadySelected = selected.has(name)
+    const isCurrentEditingValue = !!editingCurrentValue && name === editingCurrentValue
+    if(alreadySelected || isCurrentEditingValue){
+      const check = document.createElement("span")
+      check.className = "modal-checkmark"
+      check.textContent = "✓"
+      rightWrap.appendChild(check)
+    }
+    div.appendChild(rightWrap)
     if(alreadySelected){
       div.style.opacity = "0.45"
       div.style.cursor = "not-allowed"
-    } else if(editingCurrentValue && name === editingCurrentValue){
+    } else if(isCurrentEditingValue){
       div.style.background = getSelectionHighlightColor()
     }
 
@@ -440,16 +537,26 @@ function renderAddonItems(group){
       if(alreadySelected) return
       if(addonPickerTargetRow){
         setAddonValue(addonPickerTargetRow, name)
+        saveRecentItem("addon", name)
         document.getElementById("addonModal").style.display = "none"
         calc()
         return
       }
       const added = addAddon(name)
       if(!added) return
-      document.getElementById("addonModal").style.display = "none"
+      saveRecentItem("addon", name)
+      renderAddonItems(addonActiveGroup)
+      if(searchEl) searchEl.focus()
     }
     itemsEl.appendChild(div)
-  })
+  }
+
+  if(recentAddonNames.length){
+    appendRecentLabel(itemsEl)
+    recentAddonNames.forEach(renderAddonItem)
+  }
+
+  groupNamesWithoutRecent.forEach(renderAddonItem)
 }
 
 function init(){
@@ -731,8 +838,11 @@ function openSaucePicker(target = "sauce1"){
 
   const sortedSauceNames = Object.keys(data.sauce)
     .sort((a,b)=> data.sauce[b].cal - data.sauce[a].cal)
+  const recentSauceNames = getRecentItems("sauce", Object.keys(data.sauce))
+    .filter(name => !isBlocked(name))
+  const restSauceNames = sortedSauceNames.filter(name => !recentSauceNames.includes(name))
 
-  sortedSauceNames.forEach(name=>{
+  const renderSauceItem = (name)=>{
     const div = document.createElement("div")
     div.style.padding = "12px"
     div.style.borderBottom = "1px solid #eee"
@@ -768,13 +878,21 @@ function openSaucePicker(target = "sauce1"){
         const hidden = row ? row.querySelector('input[data-role="sauce-value"]') : null
         if(hidden) hidden.value = name
       }
+      saveRecentItem("sauce", name)
       updateSaucePickerLabel(target)
       modal.style.display = "none"
       calc()
     }
 
     itemsEl.appendChild(div)
-  })
+  }
+
+  if(recentSauceNames.length){
+    appendRecentLabel(itemsEl)
+    recentSauceNames.forEach(renderSauceItem)
+  }
+
+  restSauceNames.forEach(renderSauceItem)
 
   modal.onclick = (e)=>{
     if(e.target.id === "sauceModal") modal.style.display = "none"
@@ -915,6 +1033,22 @@ function triggerResultPop(){
   resultEl.classList.add("pop")
 }
 
+function showCopyToast(text){
+  let toast = document.getElementById("copyToast")
+  if(!toast){
+    toast = document.createElement("div")
+    toast.id = "copyToast"
+    toast.className = "copy-toast"
+    document.body.appendChild(toast)
+  }
+  toast.textContent = text
+  toast.classList.add("show")
+  if(copyToastTimer) clearTimeout(copyToastTimer)
+  copyToastTimer = setTimeout(()=>{
+    toast.classList.remove("show")
+  }, 1200)
+}
+
 function copyResultSummary(){
   if(!lastShareText) return
 
@@ -926,6 +1060,7 @@ function copyResultSummary(){
     copyShareResetTimer = setTimeout(()=>{
       btn.textContent = "複製分享"
     }, 1200)
+    showCopyToast("已複製")
   }
 
   if(navigator.clipboard && window.isSecureContext){
@@ -1040,7 +1175,7 @@ const enSauce = sauce1
   : "No sauce"
 
 lastShareText =
-`${formatKcal(total.cal)} kcal / ${formatProtein(total.protein)} g ${zhMainWithAddon} ${zhSauce}
+`${formatKcal(total.cal)} kcal | ${formatProtein(total.protein)} g ${zhMainWithAddon} ${zhSauce}
 ${enMainWithAddon} ${enSauce}`
 
 const calEl = document.getElementById("calVal")

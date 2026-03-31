@@ -265,6 +265,36 @@ button:active {
   padding: 6px 10px;
 }
 
+.modal-checkmark {
+  color: var(--ios-green-btn);
+  font-size: 14px;
+  font-weight: 800;
+  min-width: 12px;
+  text-align: center;
+}
+
+.copy-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(110px + env(safe-area-inset-bottom));
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(28,30,36,0.92);
+  color: #f7f8fb;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 11000;
+}
+
+.copy-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 body.resetting .card {
   animation: resetCardBounce 0.34s cubic-bezier(.22,.61,.36,1);
 }
@@ -467,6 +497,16 @@ input[type="checkbox"]:active {
     background: #303642;
     border-color: #454c59;
     color: #e7ebf2;
+  }
+
+  .modal-checkmark {
+    color: #5ec87a;
+  }
+
+  .copy-toast {
+    background: rgba(9,10,13,0.95);
+    border: 1px solid #3b404b;
+    color: #f2f2f7;
   }
 
   #mainPicker:not(.picker-field--placeholder) {
