@@ -284,6 +284,9 @@ function closeOtherSwipeRows(exceptRow = null){
 }
 
 function attachSwipeToReveal(row){
+  if(!row || row.dataset.swipeReady === "1") return
+  row.dataset.swipeReady = "1"
+
   const picker = row.querySelector(".picker-field")
   const minusBtn = row.querySelector(".minus-btn")
   if(!picker || !minusBtn) return
@@ -904,14 +907,9 @@ function updateAddonUI(){
   }
   const addonSwipeHint = document.getElementById("addonSwipeHint")
   if(addonSwipeHint){
-    addonSwipeHint.style.display = count > 0 && !hasSeenSwipeHint("addon") ? "block" : "none"
+    addonSwipeHint.style.display = count > 0 ? "block" : "none"
   }
 
-  // show swipe hint only when there are add-ons
-  const hint = document.getElementById("swipeHint")
-  if (hint) {
-    hint.style.display = count ? "block" : "none"
-  }
 }
 
 function getSauceDisplayText(value){
@@ -938,7 +936,7 @@ function updateSauce2Visibility(){
   emptyPicker.style.display = hasSecondSauceRow ? "none" : "flex"
   const sauceSwipeHint = document.getElementById("sauceSwipeHint")
   if(sauceSwipeHint){
-    sauceSwipeHint.style.display = hasSecondSauceRow && !hasSeenSwipeHint("sauce") ? "block" : "none"
+    sauceSwipeHint.style.display = sauce1Value ? "block" : "none"
   }
 }
 
@@ -1435,6 +1433,7 @@ lastMainForFeedback = main
 }
 
 init()
+attachSwipeToReveal(document.getElementById("sauce1Row"))
 
 function updateResultVisibility(){
   const resultEl = document.getElementById("result")

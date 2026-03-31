@@ -288,6 +288,11 @@ select:focus-visible {
   opacity: 0.9;
 }
 
+.picker-row-with-minus {
+  position: relative;
+  display: block;
+}
+
 .picker-row-with-minus .minus-btn {
   position: absolute;
   right: 10px;
@@ -645,17 +650,6 @@ input[type="checkbox"]:active {
 #sauce2Container.show {
   opacity: 1;
   transform: translateY(0);
-}
-
-/* Swipe hint styles */
-#swipeHint {
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-#addonList:not(:empty) ~ #addonEmpty #swipeHint,
-#swipeHint.show {
-  opacity: 1;
 }
 
 @media (prefers-color-scheme: dark) {
