@@ -1159,10 +1159,10 @@ if(!sauceShareText.length) sauceShareText.push("不加醬 No sauce")
 
 const isDoubleMeat = document.getElementById("double").checked
 const zhMainBase = `6吋${main}${isDoubleMeat ? "雙份肉" : ""}`
-const zhAddon = selectedAddonNames.map(compactZhShareName).join("+")
-const zhMainWithAddon = zhAddon ? `${zhMainBase}+${zhAddon}` : zhMainBase
+const zhAddon = selectedAddonNames.map(compactZhShareName).join(" + ")
+const zhMainWithAddon = zhAddon ? `${zhMainBase} + ${zhAddon}` : zhMainBase
 const zhSauce = sauce1
-  ? [sauce1, sauce2].filter(Boolean).join("+")
+  ? [sauce1, sauce2].filter(Boolean).join(" + ")
   : "不加醬"
 
 const mainEn = mainNameMap[main] || main
@@ -1174,9 +1174,14 @@ const enSauce = sauce1
   ? [sauce1, sauce2].filter(Boolean).map(name => sauceNameMap[name] || name).join(" + ")
   : "No sauce"
 
+const metricLine = `${formatKcal(total.cal)} kcal | ${formatProtein(total.protein)} g`
+const zhShareLine = `${zhMainWithAddon} | ${zhSauce}`
+const enShareLine = `${enMainWithAddon} | ${enSauce}`
+
 lastShareText =
-`${formatKcal(total.cal)} kcal | ${formatProtein(total.protein)} g ${zhMainWithAddon} ${zhSauce}
-${enMainWithAddon} ${enSauce}`
+`${metricLine}
+${zhShareLine}
+${enShareLine}`
 
 const calEl = document.getElementById("calVal")
 const proEl = document.getElementById("proVal")
