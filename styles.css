@@ -336,13 +336,14 @@ select:focus-visible {
 
 .picker-row-with-minus.removing {
   pointer-events: none;
-  transition: height 0.23s cubic-bezier(.22,.61,.36,1), margin-top 0.23s cubic-bezier(.22,.61,.36,1), opacity 0.18s ease;
+  opacity: 0;
+  transform: translateX(-12px) scale(0.99);
+  transition: transform 0.18s ease, opacity 0.16s ease;
 }
 
 .picker-row-with-minus.removing .picker-field {
-  transform: translateX(-12px);
-  opacity: 0;
-  transition: transform 0.2s ease, opacity 0.18s ease;
+  opacity: 0.88;
+  transition: opacity 0.16s ease;
 }
 
 .picker-row-with-minus.removing .minus-btn {

@@ -269,21 +269,12 @@ function removeRowWithAnimation(row, onDone){
     return
   }
 
-  const rowHeight = row.offsetHeight
-  row.style.height = `${rowHeight}px`
-  row.style.overflow = "hidden"
   row.classList.add("removing")
-
-  requestAnimationFrame(()=>{
-    row.style.height = "0px"
-    row.style.marginTop = "0px"
-    row.style.opacity = "0"
-  })
 
   setTimeout(()=>{
     row.remove()
     if(onDone) onDone()
-  }, 230)
+  }, 180)
 }
 
 function closeOtherSwipeRows(exceptRow = null){
