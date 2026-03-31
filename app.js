@@ -461,7 +461,8 @@ function renderAddonItems(group){
   const selected = new Set(getSelectedAddonValues(addonPickerTargetHidden))
   const editingCurrentValue = addonPickerTargetHidden ? addonPickerTargetHidden.value : ""
   const query = searchEl ? searchEl.value.trim().toLowerCase() : ""
-  const recentAddonNames = getRecentItems("addon", Object.keys(data.addon))
+  const currentGroupItems = new Set((addonGroups[group] || []).filter(name => !!data.addon[name]))
+  const recentAddonNames = getRecentItems("addon", currentGroupItems)
     .filter(name => {
       if(!query) return true
       const en = addonNameMap[name] || ""
@@ -837,7 +838,7 @@ function openSaucePicker(target = "sauce1"){
 
   const sortedSauceNames = Object.keys(data.sauce)
     .sort((a,b)=> data.sauce[b].cal - data.sauce[a].cal)
-  const recentSauceNames = getRecentItems("sauce", Object.keys(data.sauce))
+  const recentSauceNames = getRecentItems("sauce", sortedSauceNames)
     .filter(name => !isBlocked(name))
   const restSauceNames = sortedSauceNames.filter(name => !recentSauceNames.includes(name))
 
