@@ -17,6 +17,13 @@ body {
   overscroll-behavior-y: contain;
 }
 
+body.dragging-lock,
+body.dragging-lock * {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+
 .logo {
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, system-ui;
   font-size: 38px;

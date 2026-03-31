@@ -678,6 +678,7 @@ function startAddonDrag(e, wrapper, startClientY = null){
   wrapper.style.opacity = "0.8"
   wrapper.style.zIndex = "3"
   wrapper.dataset.suppressOpenUntil = String(Date.now() + 320)
+  setGlobalDraggingLock(true)
 
   const startY = startClientY ?? e.clientY
   let currentY = startY
@@ -708,6 +709,7 @@ function startAddonDrag(e, wrapper, startClientY = null){
     wrapper.style.zIndex = "1"
     delete wrapper.dataset.dragging
     wrapper.dataset.suppressOpenUntil = String(Date.now() + 320)
+    setGlobalDraggingLock(false)
     document.removeEventListener("pointermove", onMove)
     document.removeEventListener("pointerup", onUp)
     document.removeEventListener("pointercancel", onUp)
@@ -800,6 +802,11 @@ function swapSauceOrder(){
 }
 
 let sauceSuppressOpenUntil = 0
+let saucePickerTapLockUntil = 0
+
+function setGlobalDraggingLock(locked){
+  document.body.classList.toggle("dragging-lock", !!locked)
+}
 
 function suppressSaucePickerOpen(){
   sauceSuppressOpenUntil = Date.now() + 320
@@ -808,6 +815,19 @@ function suppressSaucePickerOpen(){
 function openSauce1Picker(){
   if(Date.now() < sauceSuppressOpenUntil) return
   openSaucePicker("sauce1")
+}
+
+function openSaucePickerSafe(target = "sauce1"){
+  const now = Date.now()
+  if(now < saucePickerTapLockUntil) return
+  saucePickerTapLockUntil = now + 220
+
+  if(target === "sauce1"){
+    openSauce1Picker()
+    return
+  }
+  if(now < sauceSuppressOpenUntil) return
+  openSaucePicker("sauce2")
 }
 
 function startSauceRowDrag(e, rowEl, rowType, startClientY = null){
@@ -822,6 +842,7 @@ function startSauceRowDrag(e, rowEl, rowType, startClientY = null){
   rowEl.style.opacity = "0.85"
   rowEl.style.zIndex = "3"
   suppressSaucePickerOpen()
+  setGlobalDraggingLock(true)
 
   const firstRect = sauce1Row.getBoundingClientRect()
   const secondRect = sauce2Row.getBoundingClientRect()
@@ -845,6 +866,7 @@ function startSauceRowDrag(e, rowEl, rowType, startClientY = null){
     rowEl.style.zIndex = "1"
     delete rowEl.dataset.dragging
     suppressSaucePickerOpen()
+    setGlobalDraggingLock(false)
 
     const shouldSwap = (rowType === "sauce1" && currentY > swapMidY) || (rowType === "sauce2" && currentY < swapMidY)
     if(shouldSwap){
@@ -1009,8 +1031,7 @@ function createSauceSelect(){
   display.className = "picker-field picker-field-fill picker-field--placeholder picker-draggable"
   display.textContent = NO_SAUCE_LABEL
   display.onclick = ()=>{
-    if(Date.now() < sauceSuppressOpenUntil) return
-    openSaucePicker("sauce2")
+    openSaucePickerSafe("sauce2")
   }
 
   const hiddenValue = document.createElement("input")
