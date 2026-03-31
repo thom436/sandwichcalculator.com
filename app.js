@@ -291,7 +291,8 @@ function renderMainItems(group){
     .filter(name => !!data.main[name])
     .sort((a,b)=> data.main[b].cal - data.main[a].cal)
 
-  const recentMainNames = getRecentItems("main", Object.keys(data.main))
+  const currentGroupItems = new Set((mainGroups[group] || []).filter(name => !!data.main[name]))
+  const recentMainNames = getRecentItems("main", currentGroupItems)
 
   const renderMainItem = (name)=>{
     if(!data.main[name]) return;
