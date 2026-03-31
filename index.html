@@ -285,6 +285,8 @@ input[type="checkbox"]:active::after {
     color: #aaa;
   }
 
+}
+
 </style>
 </head>
 
@@ -294,6 +296,11 @@ input[type="checkbox"]:active::after {
   <span class="sub">SUB</span><span class="way">WAY</span>
   <span class="title-sub"> 計算機</span>
 </h2>
+<div style="display:flex;justify-content:flex-end;margin-top:-10px;margin-bottom:16px;">
+  <button type="button" onclick="resetAll()" style="padding:8px 14px;border-radius:999px;border:1px solid #d1d1d6;background:#fff;color:#1c1c1e;font-size:13px;font-weight:600;">
+    重設全部
+  </button>
+</div>
 
 <!-- 主餐 -->
 <div class="card">
@@ -310,7 +317,10 @@ input[type="checkbox"]:active::after {
   </div>
 </div>
 <div id="mainCategories" style="display:flex;gap:8px;overflow:auto;margin-top:10px;"></div>
-<select id="main" onchange="calc()"></select>
+<div id="mainPicker" onclick="openMainPicker()" style="margin-top:12px;padding:14px;border-radius:14px;border:1px solid #e5e5ea;background:#f9f9f9;color:#8e8e93;font-size:17px;line-height:1.4;min-height:48px;display:flex;align-items:center;cursor:pointer;">
+  尚未選擇口味 · Choose flavor
+</div>
+<select id="main" onchange="calc()" style="display:none;"></select>
 </div>
 
 <!-- 加料 -->
@@ -319,7 +329,12 @@ input[type="checkbox"]:active::after {
   <span>加料</span>
   <span id="addonLabel" style="color:#8e8e93;font-size:13px;font-weight:400;">Add-ons (0)</span>
 </label>
-<div id="addonCategories" style="display:flex;gap:8px;overflow:auto;margin-top:10px;flex-wrap:wrap;"></div>
+<div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+  <button type="button" id="addonAddBtn" onclick="openAddonPicker(addonActiveGroup)" style="padding:8px 14px;border-radius:999px;border:none;background:#34c759;color:#fff;font-size:13px;font-weight:500;">
+    + 新增加料
+  </button>
+  <span style="color:#8e8e93;font-size:13px;font-weight:400;">Add another add-on</span>
+</div>
 <div id="addonList" style="min-height:10px;"></div>
 <div id="addonEmpty" style="font-size:13px;color:#aeaeb2;margin-top:6px;">
   尚未選擇加料 · No add-ons yet
@@ -346,8 +361,24 @@ input[type="checkbox"]:active::after {
   <div id="sauce2List" style="min-height:10px;margin-top:8px;"></div>
 </div>
 
+<!-- Disclaimer -->
+<div style="font-size:12px;color:#8e8e93;margin-top:20px;text-align:left;">
+  ⚠️ 本工具為非官方計算器，營養數據為估算值，可能因門市與製作方式有所差異
+  <span onclick="toggleDisclaimer()" style="color:#34c759;cursor:pointer;margin-left:6px;">查看詳情</span>
+</div>
+<div style="font-size:12px;color:#8e8e93;margin-top:6px;text-align:left;">
+  *潛艇堡包含小麥麵包、21g 生菜、3片番茄、3片大黃瓜、3根青椒、7g 洋蔥、三角切片起司。
+</div>
+<div id="disclaimerDetail" style="display:none;font-size:11px;color:#8e8e93;line-height:1.5;margin-top:8px;">
+  潛艇堡配料為固定組合，實際內容與份量依門市供應為準。<br>
+  部分肉品為組合肉製品，所有品項皆為熟食。<br>
+  食材來源與營養資訊可能因地區與供應變動。<br>
+  過敏原資訊請參考官方資料。<br>
+  資料版本：2026-03-31（手動整理）
+</div>
+
 <!-- spacer to prevent overlap -->
-<div style="height:180px;"></div>
+<div style="height:220px;"></div>
 
 <!-- 結果 -->
 <div class="result" id="result"></div>
@@ -425,6 +456,121 @@ sauce:{
 }
 }
 
+const mainNameMap = {
+  "嫩切雞肉":"Sliced Chicken",
+  "照燒雞肉":"Chicken Teriyaki",
+  "鮮嫩雞柳":"Chicken Strips",
+  "香烤雞肉":"Roasted Chicken Breast",
+  "火腿":"Ham",
+  "義大利牛肉丸":"Italian Meatballs",
+  "燒烤牛肉":"Roast Beef",
+  "墨西哥辣牛":"Taco Beef",
+  "義大利經典":"Italian B.M.T.",
+  "百味俱樂部":"Subway Club",
+  "哈燒起司總匯":"Subway Melt",
+  "鮪魚":"Tuna",
+  "蛋沙拉":"Egg Mayo",
+  "素食蔬菜":"Veggie Delight",
+  "厚切嫩牛":"Diced Beef",
+  "鷹嘴豆泥餅":"Falafel",
+  "辣豆瓣嫩牛":"Mala Beef",
+  "雙重起司厚牛":"Double Cheese Steak",
+  "墨西哥手撕豬":"Mexican Pulled Pork"
+}
+
+let mainGroups = {}
+let mainActiveGroup = ""
+
+function updateMainPickerLabel(){
+  const value = document.getElementById("main").value
+  const picker = document.getElementById("mainPicker")
+  if(!picker) return
+
+  if(!value){
+    picker.textContent = "尚未選擇口味 · Choose flavor"
+    picker.style.color = "#8e8e93"
+    return
+  }
+
+  const en = mainNameMap[value] || ""
+  picker.textContent = en ? `${value} ${en}` : value
+  picker.style.color = "#000"
+}
+
+function openMainPicker(defaultGroup = ""){
+  const modal = document.getElementById("mainModal")
+  const catEl = document.getElementById("mainModalCategories")
+  const itemsEl = document.getElementById("mainItems")
+
+  if(!modal || !catEl || !itemsEl) return
+
+  modal.style.display = "block"
+  catEl.innerHTML = ""
+  itemsEl.innerHTML = ""
+
+  const groupNames = Object.keys(mainGroups)
+  if(!groupNames.length) return
+
+  const selectedGroup = defaultGroup && mainGroups[defaultGroup] ? defaultGroup : (mainActiveGroup || groupNames[0])
+  mainActiveGroup = selectedGroup
+
+  groupNames.forEach((g)=>{
+    const btn = document.createElement("button")
+    btn.textContent = g
+    btn.style.padding = "8px 12px"
+    btn.style.borderRadius = "999px"
+    btn.style.border = "1px solid #ddd"
+    btn.style.background = g===selectedGroup ? "#34c759" : "#fff"
+    btn.style.color = g===selectedGroup ? "#fff" : "#000"
+
+    btn.onclick = ()=>{
+      mainActiveGroup = g
+      document.querySelectorAll("#mainModalCategories button").forEach(b=>{
+        b.style.background="#fff"
+        b.style.color="#000"
+      })
+      btn.style.background="#34c759"
+      btn.style.color="#fff"
+      renderMainItems(g)
+    }
+
+    catEl.appendChild(btn)
+  })
+
+  renderMainItems(selectedGroup)
+
+  modal.onclick = (e)=>{
+    if(e.target.id==="mainModal") modal.style.display="none"
+  }
+}
+
+function renderMainItems(group){
+  const itemsEl = document.getElementById("mainItems")
+  itemsEl.innerHTML = ""
+
+  ;(mainGroups[group] || []).forEach(name=>{
+    if(!data.main[name]) return;
+
+    const div = document.createElement("div")
+    div.style.padding = "12px"
+    div.style.borderBottom = "1px solid #eee"
+    div.style.cursor = "pointer"
+
+    const en = mainNameMap[name] || ""
+    div.textContent = en ? `${name} ${en}` : name
+
+    div.onclick = ()=>{
+      const mainSelect = document.getElementById("main")
+      mainSelect.value = name
+      updateMainPickerLabel()
+      document.getElementById("mainModal").style.display="none"
+      calc()
+    }
+
+    itemsEl.appendChild(div)
+  })
+}
+
 const addonNameMap = {
   "嫩切雞肉(3片)":"Chicken Sliced (3 slices)",
   "嫩切雞肉(1片)":"Chicken Sliced (1 slice)",
@@ -473,7 +619,23 @@ const usedAddons = new Set([
 
 addonGroups["其他"] = Object.keys(data.addon).filter(name => !usedAddons.has(name))
 
-function openAddonPicker(){
+let addonActiveGroup = Object.keys(addonGroups)[0] || ""
+
+function getSelectedAddonValues(ignoreSelect = null){
+  const values = []
+  document.querySelectorAll("#addonList select").forEach(sel => {
+    if(sel === ignoreSelect) return
+    if(sel.value) values.push(sel.value)
+  })
+  return values
+}
+
+function isAddonDuplicate(name, ignoreSelect = null){
+  if(!name) return false
+  return getSelectedAddonValues(ignoreSelect).includes(name)
+}
+
+function openAddonPicker(defaultGroup = ""){
   const modal = document.getElementById("addonModal")
   const catEl = document.getElementById("addonModalCategories")
   const itemsEl = document.getElementById("addonItems")
@@ -482,16 +644,23 @@ function openAddonPicker(){
   catEl.innerHTML = ""
   itemsEl.innerHTML = ""
 
-  Object.keys(addonGroups).forEach((g,i)=>{
+  const groupNames = Object.keys(addonGroups)
+  const selectedGroup = defaultGroup && addonGroups[defaultGroup]
+    ? defaultGroup
+    : (addonActiveGroup || groupNames[0])
+  addonActiveGroup = selectedGroup
+
+  groupNames.forEach((g)=>{
     const btn = document.createElement("button")
     btn.textContent = g
     btn.style.padding = "8px 12px"
     btn.style.borderRadius = "999px"
     btn.style.border = "1px solid #ddd"
-    btn.style.background = i===0 ? "#34c759" : "#fff"
-    btn.style.color = i===0 ? "#fff" : "#000"
+    btn.style.background = g===selectedGroup ? "#34c759" : "#fff"
+    btn.style.color = g===selectedGroup ? "#fff" : "#000"
 
     btn.onclick = ()=>{
+      addonActiveGroup = g
       document.querySelectorAll("#addonModalCategories button").forEach(b=>{
         b.style.background="#fff"
         b.style.color="#000"
@@ -504,7 +673,7 @@ function openAddonPicker(){
     catEl.appendChild(btn)
   })
 
-  renderAddonItems(Object.keys(addonGroups)[0])
+  renderAddonItems(selectedGroup)
 
   modal.onclick = (e)=>{
     if(e.target.id==="addonModal") modal.style.display="none"
@@ -514,6 +683,7 @@ function openAddonPicker(){
 function renderAddonItems(group){
   const itemsEl = document.getElementById("addonItems")
   itemsEl.innerHTML = ""
+  const selected = new Set(getSelectedAddonValues())
 
   addonGroups[group].forEach(name=>{
     if(!data.addon[name]) return;
@@ -525,10 +695,17 @@ function renderAddonItems(group){
 
     const en = addonNameMap[name] || ""
     div.textContent = en ? `${name} ${en}` : name
+    const alreadySelected = selected.has(name)
+    if(alreadySelected){
+      div.style.opacity = "0.45"
+      div.style.cursor = "not-allowed"
+    }
 
     div.onclick = ()=>{
-      addAddon(name)
-      document.getElementById("addonModal").style.display="none"
+      if(alreadySelected) return
+      const added = addAddon(name)
+      if(!added) return
+      document.getElementById("addonModal").style.display = "none"
 
       const last = document.querySelector("#addonList select:last-child")
 
@@ -547,41 +724,20 @@ function init(){
 let main = document.getElementById("main")
 main.innerHTML = '<option value="">請選擇</option>'
 
-let sortedMain = Object.entries(data.main)
+const sortedMain = Object.entries(data.main)
   .map(([name, v]) => ({
     name,
     efficiency: v.protein / v.cal
   }))
   .sort((a, b) => b.efficiency - a.efficiency)
 
-const nameMap = {
-  "嫩切雞肉":"Sliced Chicken",
-  "照燒雞肉":"Chicken Teriyaki",
-  "鮮嫩雞柳":"Chicken Strips",
-  "香烤雞肉":"Roasted Chicken Breast",
-  "火腿":"Ham",
-  "義大利牛肉丸":"Italian Meatballs",
-  "燒烤牛肉":"Roast Beef",
-  "墨西哥辣牛":"Taco Beef",
-  "義大利經典":"Italian B.M.T.",
-  "百味俱樂部":"Subway Club",
-  "哈燒起司總匯":"Subway Melt",
-  "鮪魚":"Tuna",
-  "蛋沙拉":"Egg Mayo",
-  "素食蔬菜":"Veggie Delight",
-  "厚切嫩牛":"Diced Beef",
-  "鷹嘴豆泥餅":"Falafel",
-  "辣豆瓣嫩牛":"Mala Beef",
-  "雙重起司厚牛":"Double Cheese Steak",
-  "墨西哥手撕豬":"Mexican Pulled Pork"
-}
-
 // --- main category buttons ---
-const mainGroups = {
+mainGroups = {
   "高蛋白": sortedMain.slice(0,5).map(i=>i.name),
   "均衡": sortedMain.slice(5,10).map(i=>i.name),
   "其他": sortedMain.slice(10).map(i=>i.name)
 }
+mainActiveGroup = Object.keys(mainGroups)[0] || ""
 const catEl = document.getElementById("mainCategories")
 Object.keys(mainGroups).forEach((g,i)=>{
   const btn = document.createElement("button")
@@ -601,31 +757,24 @@ Object.keys(mainGroups).forEach((g,i)=>{
     btn.style.background="#34c759"
     btn.style.color="#fff"
 
-    main.innerHTML = '<option value="">請選擇</option>'
-    mainGroups[g].forEach(name=>{
-      let en = nameMap[name] || ""
-      const label = en ? `${name} ${en}` : name;
-      main.innerHTML += `<option value="${name}">${label}</option>`;
-    })
-
-    // 🔥 auto open dropdown
-    setTimeout(()=>{
-      main.focus()
-      main.click()
-    }, 50)
+    mainActiveGroup = g
+    openMainPicker(g)
   }
 
   catEl.appendChild(btn)
 })
-// initialize with first category
-main.innerHTML = '<option value="">請選擇</option>'
-mainGroups[Object.keys(mainGroups)[0]].forEach(name=>{
-  let en = nameMap[name] || ""
+
+Object.keys(data.main).forEach(name=>{
+  let en = mainNameMap[name] || ""
   const label = en ? `${name} ${en}` : name;
   main.innerHTML += `<option value="${name}">${label}</option>`;
 })
 
-document.getElementById("main").selectedIndex = 1
+const firstGroup = Object.keys(mainGroups)[0]
+if(firstGroup && mainGroups[firstGroup] && mainGroups[firstGroup][0]){
+  main.value = mainGroups[firstGroup][0]
+}
+updateMainPickerLabel()
 
 
 document.getElementById("sauce1").innerHTML = '<option value="">選擇醬料</option>'
@@ -651,37 +800,7 @@ Object.keys(data.sauce).forEach(i=>{
   document.getElementById("sauce1").innerHTML += `<option value="${i}">${label}</option>`;
 })
 
-document.getElementById("sauce1").value = "橄欖油"
-
 document.getElementById("sauce1").disabled = false
-
-// --- Add-on category buttons ---
-const addonCatEl = document.getElementById("addonCategories")
-addonCatEl.innerHTML = "";
-Object.keys(addonGroups).forEach((g,i)=>{
-  const btn = document.createElement("button")
-  btn.textContent = g
-  btn.style.padding = "6px 10px"
-  btn.style.borderRadius = "999px"
-  btn.style.border = "1px solid #ddd"
-  btn.style.background = i===0 ? "#34c759" : "#fff"
-  btn.style.color = i===0 ? "#fff" : "#000"
-  btn.style.fontSize = "13px"
-
-  btn.onclick = ()=>{
-    document.querySelectorAll("#addonCategories button").forEach(b=>{
-      b.style.background="#fff"
-      b.style.color="#000"
-    })
-    btn.style.background="#34c759"
-    btn.style.color="#fff"
-
-    openAddonPicker()
-    renderAddonItems(g)
-  }
-
-  addonCatEl.appendChild(btn)
-})
 
 updateAddonUI()
 
@@ -690,6 +809,7 @@ calc()
 
 function createAddonSelect(removable = true){
   const wrapper = document.createElement("div")
+  wrapper.className = "addon-row"
   // Touch swipe-to-remove for mobile
   let startX = 0;
   let startY = 0;
@@ -771,7 +891,15 @@ function createAddonSelect(removable = true){
   select.addEventListener("touchstart", (e) => {
     e.stopPropagation();
   });
+  select.dataset.prevValue = ""
   select.onchange = () => {
+    const nextValue = select.value
+    if(nextValue && isAddonDuplicate(nextValue, select)){
+      haptic()
+      select.value = select.dataset.prevValue || ""
+      return
+    }
+    select.dataset.prevValue = select.value
     calc()
   }
   select.style.flex = "1"
@@ -782,7 +910,7 @@ function createAddonSelect(removable = true){
 
   const groups = {
     "肉類": ["鮮嫩雞柳","嫩切雞肉(3片)","香烤雞肉","照燒雞肉","厚切嫩牛"],
-    "其他": Object.keys(data.addon)
+    "其他": Object.keys(data.addon).filter(i => !["鮮嫩雞柳","嫩切雞肉(3片)","香烤雞肉","照燒雞肉","厚切嫩牛"].includes(i))
   }
 
   Object.entries(groups).forEach(([group, items])=>{
@@ -805,8 +933,66 @@ function createAddonSelect(removable = true){
   wrapper.appendChild(select)
 
   if(removable){
+    const controls = document.createElement("div")
+    controls.style.display = "flex"
+    controls.style.gap = "6px"
+    controls.style.alignItems = "center"
+
+    const moveUpBtn = document.createElement("button")
+    moveUpBtn.textContent = "↑"
+    moveUpBtn.dataset.role = "move-up"
+    moveUpBtn.style.border = "none"
+    moveUpBtn.style.background = "#e5e5ea"
+    moveUpBtn.style.borderRadius = "50%"
+    moveUpBtn.style.width = "28px"
+    moveUpBtn.style.height = "28px"
+    moveUpBtn.style.display = "flex"
+    moveUpBtn.style.alignItems = "center"
+    moveUpBtn.style.justifyContent = "center"
+    moveUpBtn.style.fontSize = "14px"
+    moveUpBtn.style.cursor = "pointer"
+    moveUpBtn.style.color = "#1c1c1e"
+    moveUpBtn.style.transition = "all 0.15s ease"
+    moveUpBtn.style.opacity = "0.7"
+    moveUpBtn.onclick = (e) => {
+      e.stopPropagation()
+      const prev = wrapper.previousElementSibling
+      if(prev){
+        wrapper.parentNode.insertBefore(wrapper, prev)
+        refreshAddonOrderControls()
+        calc()
+      }
+    }
+
+    const moveDownBtn = document.createElement("button")
+    moveDownBtn.textContent = "↓"
+    moveDownBtn.dataset.role = "move-down"
+    moveDownBtn.style.border = "none"
+    moveDownBtn.style.background = "#e5e5ea"
+    moveDownBtn.style.borderRadius = "50%"
+    moveDownBtn.style.width = "28px"
+    moveDownBtn.style.height = "28px"
+    moveDownBtn.style.display = "flex"
+    moveDownBtn.style.alignItems = "center"
+    moveDownBtn.style.justifyContent = "center"
+    moveDownBtn.style.fontSize = "14px"
+    moveDownBtn.style.cursor = "pointer"
+    moveDownBtn.style.color = "#1c1c1e"
+    moveDownBtn.style.transition = "all 0.15s ease"
+    moveDownBtn.style.opacity = "0.7"
+    moveDownBtn.onclick = (e) => {
+      e.stopPropagation()
+      const next = wrapper.nextElementSibling
+      if(next){
+        wrapper.parentNode.insertBefore(next, wrapper)
+        refreshAddonOrderControls()
+        calc()
+      }
+    }
+
     const removeBtn = document.createElement("button")
     removeBtn.textContent = "−"
+    removeBtn.dataset.role = "remove-addon"
     removeBtn.style.border = "none"
     removeBtn.style.background = "#e5e5ea"
     removeBtn.style.borderRadius = "50%"
@@ -828,7 +1014,10 @@ function createAddonSelect(removable = true){
       calc()
     }
 
-    wrapper.appendChild(removeBtn)
+    controls.appendChild(moveUpBtn)
+    controls.appendChild(moveDownBtn)
+    controls.appendChild(removeBtn)
+    wrapper.appendChild(controls)
   }
 
   return wrapper
@@ -837,24 +1026,30 @@ function createAddonSelect(removable = true){
 function addAddon(defaultValue = ""){
   haptic();
   const container = document.getElementById("addonList")
+  if(defaultValue && isAddonDuplicate(defaultValue)){
+    return false
+  }
 
   // Always allow remove (first add-on is now removable)
   const wrapper = createAddonSelect(true)
+  const select = wrapper.querySelector("select")
 
   if (defaultValue) {
-    wrapper.querySelector("select").value = defaultValue;
+    select.value = defaultValue
+    select.dataset.prevValue = defaultValue
   }
 
   container.appendChild(wrapper)
   // only auto focus when user manually adds
   if (!defaultValue) {
-    const select = wrapper.querySelector("select")
     setTimeout(()=>{
       select.focus()
       select.click()
     }, 50)
   }
-  updateAddonUI();
+  updateAddonUI()
+  calc()
+  return true
 }
 
 function updateAddonUI(){
@@ -869,6 +1064,25 @@ function updateAddonUI(){
   if (hint) {
     hint.style.display = count ? "block" : "none"
   }
+  refreshAddonOrderControls()
+}
+
+function refreshAddonOrderControls(){
+  const rows = Array.from(document.querySelectorAll("#addonList .addon-row"))
+  rows.forEach((row, idx) => {
+    const up = row.querySelector('[data-role="move-up"]')
+    const down = row.querySelector('[data-role="move-down"]')
+    if(up){
+      up.disabled = idx === 0
+      up.style.opacity = up.disabled ? "0.35" : "0.7"
+      up.style.cursor = up.disabled ? "not-allowed" : "pointer"
+    }
+    if(down){
+      down.disabled = idx === rows.length - 1
+      down.style.opacity = down.disabled ? "0.35" : "0.7"
+      down.style.cursor = down.disabled ? "not-allowed" : "pointer"
+    }
+  })
 }
 
 
@@ -1001,6 +1215,8 @@ function addSauce2(){
 
 let lastCal = 0;
 let lastProtein = 0;
+let resultEnabled = false;
+let resultMode = "";
 
 function animateNumber(el, start, end, decimals=1, duration=300) {
   let startTime = null;
@@ -1012,6 +1228,31 @@ function animateNumber(el, start, end, decimals=1, duration=300) {
     if (progress < 1) requestAnimationFrame(step);
   }
   requestAnimationFrame(step);
+}
+
+function showResultHint(){
+  const resultEl = document.getElementById("result")
+  if(resultMode !== "hint"){
+    resultEl.innerHTML = `<div style="font-size:14px;color:#8e8e93;font-weight:500;">請先選擇醬料 · Choose at least one sauce</div>`
+    resultMode = "hint"
+  }
+}
+
+function showResultStats(summaryText, breakdownHtml){
+  const resultEl = document.getElementById("result")
+  if(resultMode !== "stats"){
+    resultEl.innerHTML =
+`<div style="font-size:20px;font-weight:600;">🔥 <span id="calVal">0.0</span> kcal</div>
+<div style="font-size:26px;color:#34c759;font-weight:700;margin-top:6px;"><span id="proVal">0</span> g protein</div>
+<div id="summaryLine" style="margin-top:8px;font-size:12px;color:#6e6e73;line-height:1.4;"></div>
+<div id="breakdownLine" style="margin-top:10px;font-size:13px;color:#8e8e93;line-height:1.5;"></div>`
+    resultMode = "stats"
+  }
+
+  const summaryEl = document.getElementById("summaryLine")
+  const breakdownEl = document.getElementById("breakdownLine")
+  if(summaryEl) summaryEl.textContent = summaryText
+  if(breakdownEl) breakdownEl.innerHTML = breakdownHtml
 }
 
 function calc(){
@@ -1035,10 +1276,12 @@ if(document.getElementById("double").checked && main){
 }
 
 const addonSelects = document.querySelectorAll("#addonList select")
+const selectedAddonNames = []
 
 addonSelects.forEach(sel=>{
   let name = sel.value
   if(name && data.addon[name]){
+    selectedAddonNames.push(name)
     total.cal += data.addon[name].cal
     total.protein += data.addon[name].protein
     breakdown.push(`${name}: ${data.addon[name].cal} kcal`)
@@ -1062,13 +1305,19 @@ if(sauce1 && sauce2Visible && sauce2){
 }
 
 const resultEl = document.getElementById("result")
+const hasSauce = !!sauce1 || !!sauce2
+if(!hasSauce){
+  resultEnabled = false
+  resultEl.classList.remove("active")
+  resultEl.style.visibility = "visible"
+  showResultHint()
+  updateResultVisibility()
+  return
+}
 
-resultEl.innerHTML =
-`<div style="font-size:20px;font-weight:600;">🔥 <span id="calVal">0.0</span> kcal</div>
-<div style="font-size:26px;color:#34c759;font-weight:700;margin-top:6px;"><span id="proVal">0</span> g protein</div>
-<div style="margin-top:10px;font-size:13px;color:#8e8e93;line-height:1.5;">
-${breakdown.join("<br>")}
-</div>`
+const selectedSauceCount = (sauce1 ? 1 : 0) + (sauce2 ? 1 : 0)
+const summaryText = `主餐 1 份 + 加料 ${selectedAddonNames.length} 份 + 醬料 ${selectedSauceCount} 種`
+showResultStats(summaryText, breakdown.join("<br>"))
 
 const calEl = document.getElementById("calVal")
 const proEl = document.getElementById("proVal")
@@ -1079,6 +1328,8 @@ animateNumber(proEl, lastProtein, total.protein, 0)
 
 lastCal = total.cal
 lastProtein = total.protein
+
+  resultEnabled = true
 
   // Ensure result is visible when calculated
   resultEl.style.visibility = "visible"
@@ -1092,15 +1343,15 @@ init()
 
 function updateResultVisibility(){
   const resultEl = document.getElementById("result")
-  const y = window.scrollY
 
-  if(y > 20){
+  if(!resultEnabled){
     resultEl.style.opacity = "1"
     resultEl.style.pointerEvents = "none"
-  } else {
-    resultEl.style.opacity = "0"
-    resultEl.style.pointerEvents = "none"
+    return
   }
+
+  resultEl.style.opacity = "1"
+  resultEl.style.pointerEvents = "none"
 }
 
 
@@ -1119,6 +1370,52 @@ window.addEventListener("scroll", () => {
   }
 })
 
+function toggleDisclaimer(){
+  const el = document.getElementById("disclaimerDetail")
+  el.style.display = el.style.display === "none" ? "block" : "none"
+}
+
+function resetAll(){
+  const main = document.getElementById("main")
+  const mainKeys = Object.keys(mainGroups)
+  const firstGroup = mainKeys[0]
+  if(firstGroup && mainGroups[firstGroup] && mainGroups[firstGroup][0]){
+    main.value = mainGroups[firstGroup][0]
+    mainActiveGroup = firstGroup
+  } else {
+    main.value = ""
+  }
+  updateMainPickerLabel()
+
+  const mainButtons = document.querySelectorAll("#mainCategories button")
+  mainButtons.forEach((btn, idx) => {
+    btn.style.background = idx === 0 ? "#34c759" : "#fff"
+    btn.style.color = idx === 0 ? "#fff" : "#000"
+  })
+
+  document.getElementById("double").checked = false
+  document.getElementById("addonList").innerHTML = ""
+  addonActiveGroup = Object.keys(addonGroups)[0] || ""
+
+  const sauce1 = document.getElementById("sauce1")
+  sauce1.value = ""
+  const sauce2List = document.getElementById("sauce2List")
+  sauce2List.innerHTML = ""
+  const sauce2Btn = document.getElementById("sauce2Btn")
+  if(sauce2Btn) sauce2Btn.style.display = "inline-block"
+
+  lastCal = 0
+  lastProtein = 0
+  resultMode = ""
+
+  const addonModal = document.getElementById("addonModal")
+  const mainModal = document.getElementById("mainModal")
+  if(addonModal) addonModal.style.display = "none"
+  if(mainModal) mainModal.style.display = "none"
+
+  updateAddonUI()
+  calc()
+}
 
 
 </script>
@@ -1128,6 +1425,14 @@ window.addEventListener("scroll", () => {
       <div id="addonModalCategories" style="display:flex;gap:8px;overflow:auto;"></div>
     </div>
     <div id="addonItems" style="flex:1;overflow:auto;"></div>
+  </div>
+</div>
+<div id="mainModal" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;z-index:10000;">
+  <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-top-left-radius:20px;border-top-right-radius:20px;padding:16px;height:70vh;display:flex;flex-direction:column;">
+    <div id="mainCategoriesWrapper" style="flex:0 0 auto;background:#fff;padding-bottom:8px;">
+      <div id="mainModalCategories" style="display:flex;gap:8px;overflow:auto;"></div>
+    </div>
+    <div id="mainItems" style="flex:1;overflow:auto;"></div>
   </div>
 </div>
 </body>
