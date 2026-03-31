@@ -1041,7 +1041,7 @@ const enSauce = sauce1
 
 lastShareText =
 `${formatKcal(total.cal)} kcal / ${formatProtein(total.protein)} g ${zhMainWithAddon} ${zhSauce}
-${formatKcal(total.cal)} kcal / ${formatProtein(total.protein)} g ${enMainWithAddon} ${enSauce}`
+${enMainWithAddon} ${enSauce}`
 
 const calEl = document.getElementById("calVal")
 const proEl = document.getElementById("proVal")
