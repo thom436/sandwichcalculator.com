@@ -122,6 +122,33 @@ const SWIPE_HINT_KEYS = {
   sauce: "swipe_hint_seen_sauce"
 }
 
+function escapeHtml(str){
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}
+
+function shouldBreakBilingualLine(zh, en){
+  if(!zh || !en) return false
+  return (zh.length + en.length >= 24) || en.length >= 17
+}
+
+function setBilingualPickerText(el, zh, en){
+  if(!el) return
+  if(!en){
+    el.textContent = zh || ""
+    return
+  }
+  if(shouldBreakBilingualLine(zh, en)){
+    el.innerHTML = `<span class="picker-zh-line">${escapeHtml(zh)}</span><span class="picker-en-break">${escapeHtml(en)}</span>`
+    return
+  }
+  el.textContent = `${zh} ${en}`
+}
+
 function buildGroups(seedGroups, allItems, extraGroupName = "其他"){
   const groups = {}
   const used = new Set()
@@ -427,7 +454,7 @@ function updateMainPickerLabel(){
   }
 
   const en = mainNameMap[value] || ""
-  picker.textContent = en ? `${value} ${en}` : value
+  setBilingualPickerText(picker, value, en)
   picker.classList.remove("picker-field--placeholder")
   picker.classList.remove("picker-field--plus")
   picker.classList.add("picker-field-with-minus")
@@ -826,6 +853,194 @@ function renderAddonItems(group){
   sortedAddonNames.forEach(renderAddonItem)
 }
 
+function openQuickSearch(){
+  const modal = document.getElementById("quickSearchModal")
+  const input = document.getElementById("quickSearchInput")
+  if(!modal || !input) return
+  modal.style.display = "block"
+  input.value = ""
+  renderQuickSearchItems()
+  setTimeout(()=> input.focus(), 10)
+  modal.onclick = (e)=>{
+    if(e.target.id === "quickSearchModal") closeQuickSearch()
+  }
+}
+
+function closeQuickSearch(){
+  const modal = document.getElementById("quickSearchModal")
+  if(modal) modal.style.display = "none"
+}
+
+function renderQuickSearchItems(){
+  const input = document.getElementById("quickSearchInput")
+  const itemsEl = document.getElementById("quickSearchItems")
+  if(!input || !itemsEl) return
+
+  const query = input.value.trim().toLowerCase()
+  itemsEl.innerHTML = ""
+
+  if(!query){
+    const hint = document.createElement("div")
+    hint.style.padding = "14px 12px"
+    hint.style.fontSize = "13px"
+    hint.style.color = "#8e8e93"
+    hint.textContent = "輸入關鍵字以搜尋口味與加料"
+    itemsEl.appendChild(hint)
+    return
+  }
+
+  const selectedMain = document.getElementById("main").value
+  const selectedAddon = new Set(getSelectedAddonValues())
+
+  const mainMatches = Object.keys(data.main)
+    .filter(name => {
+      const en = mainNameMap[name] || ""
+      return `${name} ${en}`.toLowerCase().includes(query)
+    })
+    .sort((a,b)=> data.main[b].cal - data.main[a].cal)
+
+  const addonMatches = Object.keys(data.addon)
+    .filter(name => {
+      const en = addonNameMap[name] || ""
+      return `${name} ${en}`.toLowerCase().includes(query)
+    })
+    .sort((a,b)=> data.addon[b].cal - data.addon[a].cal)
+
+  if(!mainMatches.length && !addonMatches.length){
+    const empty = document.createElement("div")
+    empty.style.padding = "14px 12px"
+    empty.style.fontSize = "13px"
+    empty.style.color = "#8e8e93"
+    empty.textContent = "找不到符合項目 No matching items"
+    itemsEl.appendChild(empty)
+    return
+  }
+
+  const renderSectionTitle = (text)=>{
+    const title = document.createElement("div")
+    title.style.padding = "10px 12px 6px"
+    title.style.fontSize = "11px"
+    title.style.fontWeight = "700"
+    title.style.letterSpacing = "0.25px"
+    title.style.color = "var(--kcal-muted)"
+    title.textContent = text
+    itemsEl.appendChild(title)
+  }
+
+  const renderMainItem = (name)=>{
+    const row = document.createElement("div")
+    row.style.padding = "12px"
+    row.style.borderBottom = "1px solid #eee"
+    row.style.cursor = "pointer"
+    row.style.display = "flex"
+    row.style.justifyContent = "space-between"
+    row.style.alignItems = "center"
+
+    const en = mainNameMap[name] || ""
+    const left = document.createElement("div")
+    left.className = "modal-item-title"
+    left.textContent = en ? `${name} ${en}` : name
+    left.style.paddingRight = "10px"
+
+    const right = document.createElement("div")
+    right.style.fontSize = "12px"
+    right.style.color = "var(--kcal-muted)"
+    right.style.whiteSpace = "nowrap"
+    right.textContent = `${data.main[name].cal} kcal`
+
+    if(name === selectedMain){
+      row.style.opacity = "0.45"
+      row.style.cursor = "not-allowed"
+      const mark = document.createElement("span")
+      mark.className = "modal-checkmark"
+      mark.style.marginLeft = "8px"
+      mark.textContent = "✓"
+      const rightWrap = document.createElement("div")
+      rightWrap.style.display = "flex"
+      rightWrap.style.alignItems = "center"
+      rightWrap.style.gap = "8px"
+      rightWrap.appendChild(right)
+      rightWrap.appendChild(mark)
+      row.appendChild(left)
+      row.appendChild(rightWrap)
+    } else {
+      row.appendChild(left)
+      row.appendChild(right)
+      row.onclick = ()=>{
+        const mainSelect = document.getElementById("main")
+        mainSelect.value = name
+        saveRecentItem("main", name)
+        updateMainPickerLabel()
+        flashPickerSelection(document.getElementById("mainPicker"))
+        closeQuickSearch()
+        calc()
+      }
+    }
+
+    itemsEl.appendChild(row)
+  }
+
+  const renderAddonItem = (name)=>{
+    const row = document.createElement("div")
+    row.style.padding = "12px"
+    row.style.borderBottom = "1px solid #eee"
+    row.style.cursor = "pointer"
+    row.style.display = "flex"
+    row.style.justifyContent = "space-between"
+    row.style.alignItems = "center"
+
+    const en = addonNameMap[name] || ""
+    const left = document.createElement("div")
+    left.className = "modal-item-title"
+    left.textContent = en ? `${name} ${en}` : name
+    left.style.paddingRight = "10px"
+
+    const right = document.createElement("div")
+    right.style.fontSize = "12px"
+    right.style.color = "var(--kcal-muted)"
+    right.style.whiteSpace = "nowrap"
+    right.textContent = `${data.addon[name].cal} kcal`
+
+    if(selectedAddon.has(name)){
+      row.style.opacity = "0.45"
+      row.style.cursor = "not-allowed"
+      const mark = document.createElement("span")
+      mark.className = "modal-checkmark"
+      mark.style.marginLeft = "8px"
+      mark.textContent = "✓"
+      const rightWrap = document.createElement("div")
+      rightWrap.style.display = "flex"
+      rightWrap.style.alignItems = "center"
+      rightWrap.style.gap = "8px"
+      rightWrap.appendChild(right)
+      rightWrap.appendChild(mark)
+      row.appendChild(left)
+      row.appendChild(rightWrap)
+    } else {
+      row.appendChild(left)
+      row.appendChild(right)
+      row.onclick = ()=>{
+        const added = addAddon(name)
+        if(!added) return
+        saveRecentItem("addon", name)
+        closeQuickSearch()
+      }
+    }
+
+    itemsEl.appendChild(row)
+  }
+
+  if(mainMatches.length){
+    renderSectionTitle("口味 Flavor")
+    mainMatches.forEach(renderMainItem)
+  }
+
+  if(addonMatches.length){
+    renderSectionTitle("加料 Add-ons")
+    addonMatches.forEach(renderAddonItem)
+  }
+}
+
 function init(){
 let main = document.getElementById("main")
 main.innerHTML = '<option value="">請選擇</option>'
@@ -921,7 +1136,7 @@ function setAddonValue(wrapper, value){
     return
   }
   const en = addonNameMap[value] || ""
-  display.textContent = en ? `${value} ${en}` : value
+  setBilingualPickerText(display, value, en)
   display.classList.remove("picker-field--placeholder")
 }
 
@@ -1007,10 +1222,18 @@ function updateSaucePickerLabel(target = "sauce1"){
     const value = document.getElementById("sauce1").value
     const removeBtn = document.getElementById("sauce1RemoveBtn")
     if(!picker) return
-    picker.textContent = getSauceDisplayText(value)
-    picker.classList.toggle("picker-field--placeholder", !value)
-    picker.classList.toggle("picker-field--plus", !value)
-    picker.classList.toggle("picker-field-with-minus", !!value)
+    if(!value){
+      picker.textContent = getSauceDisplayText(value)
+      picker.classList.add("picker-field--placeholder")
+      picker.classList.add("picker-field--plus")
+      picker.classList.remove("picker-field-with-minus")
+    } else {
+      const en = sauceNameMap[value] || ""
+      setBilingualPickerText(picker, value, en)
+      picker.classList.remove("picker-field--placeholder")
+      picker.classList.remove("picker-field--plus")
+      picker.classList.add("picker-field-with-minus")
+    }
     if(removeBtn){
       removeBtn.style.display = value ? "flex" : "none"
     }
@@ -1025,10 +1248,18 @@ function updateSaucePickerLabel(target = "sauce1"){
   const display = row.querySelector('[data-role="sauce-display"]')
   const value = hidden ? hidden.value : ""
   if(display){
-    display.textContent = getSauceDisplayText(value)
-    display.classList.toggle("picker-field--placeholder", !value)
-    display.classList.toggle("picker-field--plus", !value)
-    display.classList.toggle("picker-field-with-minus", !!value)
+    if(!value){
+      display.textContent = getSauceDisplayText(value)
+      display.classList.add("picker-field--placeholder")
+      display.classList.add("picker-field--plus")
+      display.classList.remove("picker-field-with-minus")
+    } else {
+      const en = sauceNameMap[value] || ""
+      setBilingualPickerText(display, value, en)
+      display.classList.remove("picker-field--placeholder")
+      display.classList.remove("picker-field--plus")
+      display.classList.add("picker-field-with-minus")
+    }
   }
 }
 
@@ -1290,7 +1521,7 @@ function showResultStats(summaryText, breakdownHtml){
     resultEl.innerHTML =
 `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
   <div style="font-size:20px;font-weight:600;">🔥 <span id="calVal">0.0</span> kcal</div>
-  <button id="copyShareBtn" class="result-copy-btn" type="button" aria-label="複製結果 Copy result" title="複製結果 Copy result" onclick="copyResultSummary()">⧉</button>
+  <button id="copyShareBtn" class="result-copy-btn" type="button" aria-label="複製結果 Copy result" title="複製結果 Copy result" onclick="copyResultSummary()"><span class="copy-rounded-icon" aria-hidden="true"></span></button>
 </div>
 <div style="font-size:26px;color:#34c759;font-weight:700;margin-top:6px;"><span id="proVal">0</span> g protein</div>
 <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;">
@@ -1372,10 +1603,10 @@ function copyResultSummary(){
   const btn = document.getElementById("copyShareBtn")
   const setCopiedLabel = ()=>{
     if(!btn) return
-    btn.textContent = "✓"
+    btn.innerHTML = `<span class="copy-check-icon">✓</span>`
     if(copyShareResetTimer) clearTimeout(copyShareResetTimer)
     copyShareResetTimer = setTimeout(()=>{
-      btn.textContent = "⧉"
+      btn.innerHTML = `<span class="copy-rounded-icon" aria-hidden="true"></span>`
     }, 1200)
     showCopyToast("已複製")
   }
@@ -1602,9 +1833,11 @@ function resetAll(){
   const addonModal = document.getElementById("addonModal")
   const mainModal = document.getElementById("mainModal")
   const sauceModal = document.getElementById("sauceModal")
+  const quickSearchModal = document.getElementById("quickSearchModal")
   if(addonModal) addonModal.style.display = "none"
   if(mainModal) mainModal.style.display = "none"
   if(sauceModal) sauceModal.style.display = "none"
+  if(quickSearchModal) quickSearchModal.style.display = "none"
 
   updateAddonUI()
   calc()
