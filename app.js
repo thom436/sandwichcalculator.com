@@ -214,6 +214,33 @@ function formatProtein(value){
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
 }
 
+function createModalMetaWrap(metaContent, options = {}){
+  const { showCheck = false, html = false, hasEfficiency = false } = options
+  const wrap = document.createElement("div")
+  wrap.className = "modal-item-meta-wrap"
+  if(hasEfficiency) wrap.classList.add("modal-item-meta-wrap--efficiency")
+
+  const meta = document.createElement("div")
+  meta.className = "modal-item-kcal"
+  if(hasEfficiency) meta.classList.add("modal-item-kcal--efficiency")
+  if(html){
+    meta.innerHTML = metaContent
+  } else {
+    meta.textContent = metaContent
+  }
+
+  const check = document.createElement("span")
+  check.className = "modal-checkmark"
+  check.textContent = "✓"
+  if(!showCheck){
+    check.style.visibility = "hidden"
+  }
+
+  wrap.appendChild(meta)
+  wrap.appendChild(check)
+  return wrap
+}
+
 function getRecentItems(type, validItems = null){
   const key = RECENT_KEYS[type]
   if(!key) return []
@@ -617,27 +644,11 @@ function renderMainItems(group){
     textWrap.textContent = en ? `${name} ${en}` : name
     textWrap.style.paddingRight = "10px"
 
-    const meta = document.createElement("div")
     const efficiency = ((data.main[name].protein / data.main[name].cal) * 100).toFixed(1)
-    meta.innerHTML = `${data.main[name].cal} kcal<br><span class="item-efficiency">${efficiency}g/100kcal</span>`
-    meta.style.fontSize = "12px"
-    meta.style.color = "var(--kcal-muted)"
-    meta.style.whiteSpace = "nowrap"
-    meta.style.textAlign = "right"
-    meta.style.lineHeight = "1.2"
-
-    const rightWrap = document.createElement("div")
-    rightWrap.style.display = "flex"
-    rightWrap.style.alignItems = "center"
-    rightWrap.style.gap = "8px"
-    rightWrap.appendChild(meta)
-
-    if(name === selectedMain){
-      const check = document.createElement("span")
-      check.className = "modal-checkmark"
-      check.textContent = "✓"
-      rightWrap.appendChild(check)
-    }
+    const rightWrap = createModalMetaWrap(
+      `${data.main[name].cal} kcal<br><span class="item-efficiency">${efficiency}g/100kcal</span>`,
+      { showCheck: name === selectedMain, html: true, hasEfficiency: true }
+    )
 
     div.appendChild(textWrap)
     div.appendChild(rightWrap)
@@ -843,26 +854,13 @@ function renderAddonItems(group){
     textWrap.textContent = en ? `${name} ${en}` : name
     textWrap.style.paddingRight = "10px"
 
-    const meta = document.createElement("div")
-    meta.textContent = `${data.addon[name].cal} kcal`
-    meta.style.fontSize = "12px"
-    meta.style.color = "var(--kcal-muted)"
-    meta.style.whiteSpace = "nowrap"
-    const rightWrap = document.createElement("div")
-    rightWrap.style.display = "flex"
-    rightWrap.style.alignItems = "center"
-    rightWrap.style.gap = "8px"
-    rightWrap.appendChild(meta)
+    const rightWrap = createModalMetaWrap(`${data.addon[name].cal} kcal`, {
+      showCheck: selected.has(name) || (!!editingCurrentValue && name === editingCurrentValue)
+    })
 
     div.appendChild(textWrap)
     const alreadySelected = selected.has(name)
     const isCurrentEditingValue = !!editingCurrentValue && name === editingCurrentValue
-    if(alreadySelected || isCurrentEditingValue){
-      const check = document.createElement("span")
-      check.className = "modal-checkmark"
-      check.textContent = "✓"
-      rightWrap.appendChild(check)
-    }
     div.appendChild(rightWrap)
     if(alreadySelected || isCurrentEditingValue){
       div.style.opacity = "0.45"
@@ -1012,30 +1010,18 @@ function renderQuickSearchItems(){
     left.textContent = en ? `${name} ${en}` : name
     left.style.paddingRight = "10px"
 
-    const right = document.createElement("div")
-    right.style.fontSize = "12px"
-    right.style.color = "var(--kcal-muted)"
-    right.style.whiteSpace = "nowrap"
-    right.textContent = `${data.main[name].cal} kcal`
+    const rightWrap = createModalMetaWrap(`${data.main[name].cal} kcal`, {
+      showCheck: name === selectedMain
+    })
 
     if(name === selectedMain){
       row.style.opacity = "0.45"
       row.style.cursor = "not-allowed"
-      const mark = document.createElement("span")
-      mark.className = "modal-checkmark"
-      mark.style.marginLeft = "8px"
-      mark.textContent = "✓"
-      const rightWrap = document.createElement("div")
-      rightWrap.style.display = "flex"
-      rightWrap.style.alignItems = "center"
-      rightWrap.style.gap = "8px"
-      rightWrap.appendChild(right)
-      rightWrap.appendChild(mark)
       row.appendChild(left)
       row.appendChild(rightWrap)
     } else {
       row.appendChild(left)
-      row.appendChild(right)
+      row.appendChild(rightWrap)
       row.onclick = ()=>{
         const mainSelect = document.getElementById("main")
         mainSelect.value = name
@@ -1065,30 +1051,18 @@ function renderQuickSearchItems(){
     left.textContent = en ? `${name} ${en}` : name
     left.style.paddingRight = "10px"
 
-    const right = document.createElement("div")
-    right.style.fontSize = "12px"
-    right.style.color = "var(--kcal-muted)"
-    right.style.whiteSpace = "nowrap"
-    right.textContent = `${data.addon[name].cal} kcal`
+    const rightWrap = createModalMetaWrap(`${data.addon[name].cal} kcal`, {
+      showCheck: selectedAddon.has(name)
+    })
 
     if(selectedAddon.has(name)){
       row.style.opacity = "0.45"
       row.style.cursor = "not-allowed"
-      const mark = document.createElement("span")
-      mark.className = "modal-checkmark"
-      mark.style.marginLeft = "8px"
-      mark.textContent = "✓"
-      const rightWrap = document.createElement("div")
-      rightWrap.style.display = "flex"
-      rightWrap.style.alignItems = "center"
-      rightWrap.style.gap = "8px"
-      rightWrap.appendChild(right)
-      rightWrap.appendChild(mark)
       row.appendChild(left)
       row.appendChild(rightWrap)
     } else {
       row.appendChild(left)
-      row.appendChild(right)
+      row.appendChild(rightWrap)
       row.onclick = ()=>{
         const added = addAddon(name)
         if(!added) return
@@ -1115,30 +1089,18 @@ function renderQuickSearchItems(){
     left.textContent = en ? `${name} ${en}` : name
     left.style.paddingRight = "10px"
 
-    const right = document.createElement("div")
-    right.style.fontSize = "12px"
-    right.style.color = "var(--kcal-muted)"
-    right.style.whiteSpace = "nowrap"
-    right.textContent = `${data.sauce[name].cal} kcal`
+    const rightWrap = createModalMetaWrap(`${data.sauce[name].cal} kcal`, {
+      showCheck: selectedSauce.has(name)
+    })
 
     if(selectedSauce.has(name)){
       row.style.opacity = "0.45"
       row.style.cursor = "not-allowed"
-      const mark = document.createElement("span")
-      mark.className = "modal-checkmark"
-      mark.style.marginLeft = "8px"
-      mark.textContent = "✓"
-      const rightWrap = document.createElement("div")
-      rightWrap.style.display = "flex"
-      rightWrap.style.alignItems = "center"
-      rightWrap.style.gap = "8px"
-      rightWrap.appendChild(right)
-      rightWrap.appendChild(mark)
       row.appendChild(left)
       row.appendChild(rightWrap)
     } else {
       row.appendChild(left)
-      row.appendChild(right)
+      row.appendChild(rightWrap)
       row.onclick = ()=>{
         const sauce1El = document.getElementById("sauce1")
         const currentSauce1 = sauce1El ? sauce1El.value : ""
@@ -1476,28 +1438,19 @@ function renderSauceItems(){
     textWrap.className = "modal-item-title"
     textWrap.textContent = en ? `${name} ${en}` : name
     textWrap.style.paddingRight = "10px"
-    const meta = document.createElement("div")
-    meta.textContent = `${data.sauce[name].cal} kcal`
-    meta.style.fontSize = "12px"
-    meta.style.color = "var(--kcal-muted)"
-    meta.style.whiteSpace = "nowrap"
-    const rightWrap = document.createElement("div")
-    rightWrap.style.display = "flex"
-    rightWrap.style.alignItems = "center"
-    rightWrap.style.gap = "8px"
-    rightWrap.appendChild(meta)
+    const rightWrap = createModalMetaWrap(`${data.sauce[name].cal} kcal`, {
+      showCheck: name === selectedValue
+    })
     div.appendChild(textWrap)
     div.appendChild(rightWrap)
 
-    if(isBlocked(name)){
+    if(isBlocked(name) || name === selectedValue){
       div.style.opacity = "0.45"
       div.style.cursor = "not-allowed"
-    } else if(name === selectedValue){
-      div.style.background = getSelectionHighlightColor()
     }
 
     div.onclick = ()=>{
-      if(isBlocked(name)) return
+      if(isBlocked(name) || name === selectedValue) return
       if(target === "sauce1"){
         document.getElementById("sauce1").value = name
       } else {

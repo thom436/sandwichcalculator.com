@@ -740,8 +740,34 @@ button:active {
   color: var(--ios-green-btn);
   font-size: 14px;
   font-weight: 800;
-  min-width: 12px;
+  min-width: 14px;
   text-align: center;
+  flex: 0 0 14px;
+}
+
+.modal-item-meta-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-width: 92px;
+}
+
+.modal-item-meta-wrap--efficiency {
+  min-width: 108px;
+}
+
+.modal-item-kcal {
+  font-size: 12px;
+  color: var(--kcal-muted);
+  white-space: nowrap;
+  text-align: right;
+  line-height: 1.2;
+}
+
+.modal-item-kcal--efficiency {
+  white-space: nowrap;
 }
 
 .copy-toast {
