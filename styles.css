@@ -1722,8 +1722,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: auto;
-  max-height: min(76vh, 680px);
+  height: min(76vh, 680px);
   display: flex;
   flex-direction: column;
   padding: 10px 14px max(20px, env(safe-area-inset-bottom));
@@ -1770,7 +1769,7 @@ body {
 
 .modal-items {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 60px;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
