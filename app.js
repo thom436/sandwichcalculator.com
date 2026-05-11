@@ -626,7 +626,7 @@ function attachSwipeToReveal(row, onSwipeAction, canSwipe){
     maxDrag = rowWidth + 20
     deleteThreshold = Math.round(rowWidth * 0.50)   // trigger at 50%
     settleThreshold = Math.max(42, Math.round(revealWidth * 0.56))
-    actionBtn.style.height = `${rowHeight}px`
+    actionBtn.style.height = `${Math.max(40, rowHeight - 8)}px`
 
     startX = clientX
     startY = clientY
@@ -1924,17 +1924,6 @@ function clearAddonSection(){
 }
 
 function updateSectionClearButtons(){
-  const mainClearBtn = document.getElementById("mainClearBtn")
-  const addonClearBtn = document.getElementById("addonClearBtn")
-  const sauceClearBtn = document.getElementById("sauceClearBtn")
-  const hasMain = !!document.getElementById("main").value
-  const hasAddon = document.querySelectorAll("#addonList .addon-row").length > 0
-  const hasSauce1 = !!document.getElementById("sauce1").value
-  const hasSauce2 = !!document.querySelector('#sauce2List input[data-role="sauce-value"]')?.value
-
-  if(mainClearBtn) mainClearBtn.style.visibility = hasMain ? "visible" : "hidden"
-  if(addonClearBtn) addonClearBtn.style.visibility = hasAddon ? "visible" : "hidden"
-  if(sauceClearBtn) sauceClearBtn.style.visibility = (hasSauce1 || hasSauce2) ? "visible" : "hidden"
   refreshSwipeValueFlags()
 }
 
